@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {SimpleCellAddress} from '../../Cell'
@@ -81,7 +81,7 @@ export class AddressMapping {
 
   public getRawValue(address: SimpleCellAddress): RawCellContent {
     const vertex = this.getCell(address)
-    if(vertex instanceof ValueCellVertex) {
+    if (vertex instanceof ValueCellVertex) {
       return vertex.getValues().rawValue
     } else if (vertex instanceof ArrayVertex) {
       return vertex.getArrayCellRawValue(address)

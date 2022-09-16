@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {CellError, ErrorType} from '../../Cell'
@@ -13,7 +13,7 @@ import {ArgumentTypes, FunctionPlugin, FunctionPluginTypecheck} from './Function
 /**
  * Interpreter plugin containing text-specific functions
  */
-export class TextPlugin extends FunctionPlugin implements FunctionPluginTypecheck<TextPlugin>{
+export class TextPlugin extends FunctionPlugin implements FunctionPluginTypecheck<TextPlugin> {
   public static implementedFunctions = {
     'CONCATENATE': {
       method: 'concatenate',

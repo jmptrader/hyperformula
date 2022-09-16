@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 export {
@@ -60,7 +60,7 @@ export {
   buildCellErrorAst,
 } from './Ast'
 
-export { Unparser } from './Unparser'
+export {Unparser} from './Unparser'
 
 export {
   RelativeDependency,

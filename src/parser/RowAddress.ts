@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {
@@ -19,7 +19,8 @@ export class RowAddress implements AddressWithRow {
     public readonly type: ReferenceType,
     public readonly row: number,
     public readonly sheet?: number,
-  ) {}
+  ) {
+  }
 
   public static absolute(row: number, sheet?: number) {
     return new RowAddress(ReferenceType.ABSOLUTE, row, sheet)
@@ -27,6 +28,10 @@ export class RowAddress implements AddressWithRow {
 
   public static relative(row: number, sheet?: number) {
     return new RowAddress(ReferenceType.RELATIVE, row, sheet)
+  }
+
+  public static compareByAbsoluteAddress(baseAddress: SimpleCellAddress): (rowA: RowAddress, rowB: RowAddress) => number {
+    return (rowA: RowAddress, rowB: RowAddress) =>  rowA.toSimpleRowAddress(baseAddress).row - rowB.toSimpleRowAddress(baseAddress).row
   }
 
   public isRowAbsolute(): boolean {
@@ -69,7 +74,7 @@ export class RowAddress implements AddressWithRow {
     return new RowAddress(this.type, row, this.sheet)
   }
 
-  public withAbsoluteSheet(sheet: number): RowAddress {
+  public withSheet(sheet: number | undefined): RowAddress {
     return new RowAddress(this.type, this.row, sheet)
   }
 
@@ -91,7 +96,7 @@ export class RowAddress implements AddressWithRow {
 
   public unparse(baseAddress: SimpleCellAddress): Maybe<string> {
     const simpleAddress = this.toSimpleRowAddress(baseAddress)
-    if(invalidSimpleRowAddress(simpleAddress)) {
+    if (invalidSimpleRowAddress(simpleAddress)) {
       return undefined
     }
     const dollar = this.type === ReferenceType.ABSOLUTE ? '$' : ''

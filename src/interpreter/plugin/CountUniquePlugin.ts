@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {CellError, ErrorType} from '../../Cell'
@@ -12,15 +12,15 @@ import {ArgumentTypes, FunctionPlugin, FunctionPluginTypecheck} from './Function
 /**
  * Interpreter plugin containing COUNTUNIQUE function
  */
-export class CountUniquePlugin extends FunctionPlugin implements FunctionPluginTypecheck<CountUniquePlugin>{
+export class CountUniquePlugin extends FunctionPlugin implements FunctionPluginTypecheck<CountUniquePlugin> {
   public static implementedFunctions = {
     'COUNTUNIQUE': {
       method: 'countunique',
       parameters: [
-          {argumentType: ArgumentTypes.SCALAR},
-        ],
-        repeatLastArgs: 1,
-        expandRanges: true,
+        {argumentType: ArgumentTypes.SCALAR},
+      ],
+      repeatLastArgs: 1,
+      expandRanges: true,
     },
   }
 

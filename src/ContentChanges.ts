@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {addressKey, SimpleCellAddress} from './Cell'
@@ -20,11 +20,11 @@ export interface ChangeExporter<T> {
 export type ChangeList = CellValueChange[]
 
 export class ContentChanges {
+  private changes: Map<string, CellValueChange> = new Map()
+
   public static empty() {
     return new ContentChanges()
   }
-
-  private changes: Map<string, CellValueChange> = new Map()
 
   public addAll(other: ContentChanges): ContentChanges {
     for (const change of other.changes.values()) {
@@ -43,7 +43,7 @@ export class ContentChanges {
       const change = exporter.exportChange(e)
       if (Array.isArray(change)) {
         ret = ret.concat(change)
-      } else{
+      } else {
         ret.push(change)
       }
     })

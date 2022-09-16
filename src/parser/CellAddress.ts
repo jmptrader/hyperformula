@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {
@@ -16,6 +16,8 @@ import {
 import {Maybe} from '../Maybe'
 import {AddressWithColumn, AddressWithRow} from './Address'
 import {columnIndexToLabel} from './addressRepresentationConverters'
+import {ColumnAddress, ReferenceType} from './ColumnAddress'
+import {RowAddress} from './RowAddress'
 
 /** Possible kinds of cell references */
 export enum CellReferenceType {
@@ -33,6 +35,26 @@ export enum CellReferenceType {
 }
 
 export class CellAddress implements AddressWithColumn, AddressWithRow {
+  constructor(
+    public readonly col: number,
+    public readonly row: number,
+    public readonly type: CellReferenceType,
+    public readonly sheet?: number,
+  ) {
+  }
+
+  public static fromColAndRow(col: ColumnAddress, row: RowAddress, sheet: number | undefined): CellAddress {
+    const factoryMethod = col.isColumnAbsolute() && row.isRowAbsolute()
+      ? CellAddress.absolute.bind(this)
+      : col.isColumnAbsolute()
+        ? CellAddress.absoluteCol.bind(this)
+        : row.isRowAbsolute()
+          ? CellAddress.absoluteRow.bind(this)
+          // this is because `CellAddress.relative` expects arguments in a different order
+          : (col: number, row: number, sheet?: number) => CellAddress.relative(row, col, sheet)
+
+    return factoryMethod(col.col, row.row, sheet)
+  }
 
   public static relative(row: number, col: number, sheet?: number) {
     return new CellAddress(col, row, CellReferenceType.CELL_REFERENCE_RELATIVE, sheet)
@@ -48,13 +70,6 @@ export class CellAddress implements AddressWithColumn, AddressWithRow {
 
   public static absoluteRow(col: number, row: number, sheet?: number) {
     return new CellAddress(col, row, CellReferenceType.CELL_REFERENCE_ABSOLUTE_ROW, sheet)
-  }
-  constructor(
-    public readonly col: number,
-    public readonly row: number,
-    public readonly type: CellReferenceType,
-    public readonly sheet?: number,
-  ) {
   }
 
   /**
@@ -73,6 +88,16 @@ export class CellAddress implements AddressWithColumn, AddressWithRow {
     } else {
       return simpleCellAddress(sheet, baseAddress.col + this.col, baseAddress.row + this.row)
     }
+  }
+
+  public toColumnAddress(): ColumnAddress {
+    const refType = this.isColumnRelative() ? ReferenceType.RELATIVE : ReferenceType.ABSOLUTE
+    return new ColumnAddress(refType, this.col, this.sheet)
+  }
+
+  public toRowAddress(): RowAddress {
+    const refType = this.isRowRelative() ? ReferenceType.RELATIVE : ReferenceType.ABSOLUTE
+    return new RowAddress(refType, this.row, this.sheet)
   }
 
   public toSimpleColumnAddress(baseAddress: SimpleCellAddress): SimpleColumnAddress {
@@ -126,7 +151,7 @@ export class CellAddress implements AddressWithColumn, AddressWithRow {
     return new CellAddress(this.col + toRight, this.row + toBottom, this.type, newSheet)
   }
 
-  public withAbsoluteSheet(sheet: number): CellAddress {
+  public withSheet(sheet: number | undefined): CellAddress {
     return new CellAddress(this.col, this.row, this.type, sheet)
   }
 
@@ -166,7 +191,7 @@ export class CellAddress implements AddressWithColumn, AddressWithRow {
 
   public unparse(baseAddress: SimpleCellAddress): Maybe<string> {
     const simpleAddress = this.toSimpleCellAddress(baseAddress)
-    if(invalidSimpleCellAddress(simpleAddress)) {
+    if (invalidSimpleCellAddress(simpleAddress)) {
       return undefined
     }
     const column = columnIndexToLabel(simpleAddress.col)

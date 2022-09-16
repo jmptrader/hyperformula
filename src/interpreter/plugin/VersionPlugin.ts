@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {LicenseKeyValidityState} from '../../helpers/licenseKeyValidator'
@@ -17,7 +17,7 @@ const LICENSE_STATUS_MAP = new Map([
   [LicenseKeyValidityState.EXPIRED, 4],
 ])
 
-export class VersionPlugin extends FunctionPlugin implements FunctionPluginTypecheck<VersionPlugin>{
+export class VersionPlugin extends FunctionPlugin implements FunctionPluginTypecheck<VersionPlugin> {
   public static implementedFunctions = {
     'VERSION': {
       method: 'version',

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {Maybe} from '../Maybe'
@@ -119,7 +119,7 @@ export function parseForNumberFormat(str: string): Maybe<FormatExpression> {
 }
 
 export function parse(str: string): FormatExpression {
-  return parseForDateTimeFormat(str) ?? parseForNumberFormat(str) ??  {
+  return parseForDateTimeFormat(str) ?? parseForNumberFormat(str) ?? {
     type: FormatExpressionType.STRING,
     tokens: [{
       type: TokenType.FREE_TEXT,

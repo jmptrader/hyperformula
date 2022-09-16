@@ -1,5 +1,5 @@
 typecheck: ## Typecheck the code
-	@npm run typings:check
+	@npm run verify:typings
 
 setup: ## Setup project
 	@npm i
@@ -27,7 +27,7 @@ lint-fix: ## Fix linting errors
 	@npm run lint:fix
 
 coverage: ## Run tests and show coverage
-	@npm run coverage
+	@npm run test:coverage
 
 doc: ## Generate documentation
 	@npm run typedoc:build
@@ -54,7 +54,7 @@ bundle-production: compile ## Transpiles and bundles files to UMD format (with m
 	@npm run bundle:production
 
 bundle-typings: ## Generates TypeScript declaration files
-	@npm run typings:generate
+	@npm run bundle:typings
 
 check-bundle:
 	@npm run verify-bundles

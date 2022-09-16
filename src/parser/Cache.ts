@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {FunctionRegistry} from '../interpreter/FunctionRegistry'
@@ -14,7 +14,13 @@ export interface CacheEntry {
   hasVolatileFunction: boolean,
   hasStructuralChangeFunction: boolean,
 }
-const buildCacheEntry = (ast: Ast, relativeDependencies: RelativeDependency[], hasVolatileFunction: boolean, hasStructuralChangeFunction: boolean) => ({ ast, relativeDependencies, hasVolatileFunction, hasStructuralChangeFunction })
+
+const buildCacheEntry = (ast: Ast, relativeDependencies: RelativeDependency[], hasVolatileFunction: boolean, hasStructuralChangeFunction: boolean) => ({
+  ast,
+  relativeDependencies,
+  hasVolatileFunction,
+  hasStructuralChangeFunction
+})
 
 export class Cache {
   private cache: Map<string, CacheEntry> = new Map()

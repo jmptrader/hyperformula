@@ -8,12 +8,12 @@ import {InterpreterState} from '../src/interpreter/InterpreterState'
 import {InternalScalarValue} from '../src/interpreter/InterpreterValue'
 import {FunctionPlugin, FunctionPluginTypecheck} from '../src/interpreter/plugin/FunctionPlugin'
 import {NumericAggregationPlugin} from '../src/interpreter/plugin/NumericAggregationPlugin'
-import {SumifPlugin} from '../src/interpreter/plugin/SumifPlugin'
+import {ConditionalAggregationPlugin} from '../src/interpreter/plugin/ConditionalAggregationPlugin'
 import {VersionPlugin} from '../src/interpreter/plugin/VersionPlugin'
 import {ProcedureAst} from '../src/parser'
 import {adr, detailedError, expectArrayWithSameContent} from './testUtils'
 
-class FooPlugin extends FunctionPlugin implements FunctionPluginTypecheck<FooPlugin>{
+class FooPlugin extends FunctionPlugin implements FunctionPluginTypecheck<FooPlugin> {
   public static implementedFunctions = {
     'FOO': {
       method: 'foo',
@@ -57,7 +57,7 @@ class FooPlugin extends FunctionPlugin implements FunctionPluginTypecheck<FooPlu
   }
 }
 
-class SumWithExtra extends FunctionPlugin implements FunctionPluginTypecheck<SumWithExtra>{
+class SumWithExtra extends FunctionPlugin implements FunctionPluginTypecheck<SumWithExtra> {
   public static implementedFunctions = {
     'SUM': {
       method: 'sum',
@@ -75,7 +75,7 @@ class SumWithExtra extends FunctionPlugin implements FunctionPluginTypecheck<Sum
   }
 }
 
-class InvalidPlugin extends FunctionPlugin implements FunctionPluginTypecheck<InvalidPlugin>{
+class InvalidPlugin extends FunctionPlugin implements FunctionPluginTypecheck<InvalidPlugin> {
   public static implementedFunctions = {
     'FOO': {
       method: 'foo',
@@ -87,8 +87,7 @@ class InvalidPlugin extends FunctionPlugin implements FunctionPluginTypecheck<In
   }
 }
 
-
-class EmptyAliasPlugin extends FunctionPlugin implements FunctionPluginTypecheck<EmptyAliasPlugin>{
+class EmptyAliasPlugin extends FunctionPlugin implements FunctionPluginTypecheck<EmptyAliasPlugin> {
   public static implementedFunctions = {
     'FOO': {
       method: 'foo',
@@ -100,7 +99,7 @@ class EmptyAliasPlugin extends FunctionPlugin implements FunctionPluginTypecheck
   }
 }
 
-class OverloadedAliasPlugin extends FunctionPlugin implements FunctionPluginTypecheck<OverloadedAliasPlugin>{
+class OverloadedAliasPlugin extends FunctionPlugin implements FunctionPluginTypecheck<OverloadedAliasPlugin> {
   public static implementedFunctions = {
     'FOO': {
       method: 'foo',
@@ -115,7 +114,7 @@ class OverloadedAliasPlugin extends FunctionPlugin implements FunctionPluginType
   }
 }
 
-class ReservedNamePlugin extends FunctionPlugin implements FunctionPluginTypecheck<ReservedNamePlugin>{
+class ReservedNamePlugin extends FunctionPlugin implements FunctionPluginTypecheck<ReservedNamePlugin> {
   public static implementedFunctions = {
     'VERSION': {
       method: 'version',
@@ -126,7 +125,6 @@ class ReservedNamePlugin extends FunctionPlugin implements FunctionPluginTypeche
     return 'foo'
   }
 }
-
 
 describe('Register static custom plugin', () => {
   it('should register plugin with translations', () => {
@@ -146,14 +144,28 @@ describe('Register static custom plugin', () => {
     expect(engine.getCellValue(adr('A1'))).toEqual('foo')
   })
 
+  it('registerFunction should not affect the existing HyperFormula instances', () => {
+    const engine = HyperFormula.buildFromArray([['=FOO()']])
+    HyperFormula.registerFunction('FOO', FooPlugin, FooPlugin.translations)
+
+    expect(engine.getCellValue(adr('A1'))).toEqualError(detailedError(ErrorType.NAME, ErrorMessage.FunctionName('FOO')))
+  })
+
+  it('registerFunctionPlugin should not affect the existing HyperFormula instances', () => {
+    const engine = HyperFormula.buildFromArray([['=FOO()']])
+    HyperFormula.registerFunctionPlugin(FooPlugin, FooPlugin.translations)
+
+    expect(engine.getCellValue(adr('A1'))).toEqualError(detailedError(ErrorType.NAME, ErrorMessage.FunctionName('FOO')))
+  })
+
   it('should return registered formula translations', () => {
     HyperFormula.unregisterAllFunctions()
     HyperFormula.registerLanguage('plPL', plPL)
-    HyperFormula.registerFunctionPlugin(SumifPlugin)
+    HyperFormula.registerFunctionPlugin(ConditionalAggregationPlugin)
     HyperFormula.registerFunctionPlugin(FooPlugin, FooPlugin.translations)
     const formulaNames = HyperFormula.getRegisteredFunctionNames('plPL')
 
-    expectArrayWithSameContent(['FU', 'BAR', 'ARRAYFOO', 'SUMA.JEŻELI', 'LICZ.JEŻELI', 'ŚREDNIA.JEŻELI', 'SUMY.JEŻELI', 'LICZ.WARUNKI', 'VERSION', 'PRZESUNIĘCIE'], formulaNames)
+    expectArrayWithSameContent(['FU', 'BAR', 'ARRAYFOO', 'SUMA.JEŻELI', 'LICZ.JEŻELI', 'ŚREDNIA.JEŻELI', 'SUMY.JEŻELI', 'LICZ.WARUNKI', 'VERSION', 'PRZESUNIĘCIE', 'MAKS.WARUNKÓW', 'MIN.WARUNKÓW'], formulaNames)
   })
 
   it('should register all formulas from plugin', () => {
@@ -226,25 +238,25 @@ describe('Register static custom plugin', () => {
 
   it('should return registered plugins', () => {
     HyperFormula.unregisterAllFunctions()
-    HyperFormula.registerFunctionPlugin(SumifPlugin)
+    HyperFormula.registerFunctionPlugin(ConditionalAggregationPlugin)
     HyperFormula.registerFunctionPlugin(NumericAggregationPlugin)
     HyperFormula.registerFunctionPlugin(SumWithExtra)
 
-    expectArrayWithSameContent(HyperFormula.getAllFunctionPlugins(), [SumifPlugin, NumericAggregationPlugin, SumWithExtra])
+    expectArrayWithSameContent(HyperFormula.getAllFunctionPlugins(), [ConditionalAggregationPlugin, NumericAggregationPlugin, SumWithExtra])
   })
 
   it('should unregister whole plugin', () => {
     HyperFormula.unregisterAllFunctions()
     HyperFormula.registerFunctionPlugin(NumericAggregationPlugin)
-    HyperFormula.registerFunctionPlugin(SumifPlugin)
+    HyperFormula.registerFunctionPlugin(ConditionalAggregationPlugin)
 
     HyperFormula.unregisterFunctionPlugin(NumericAggregationPlugin)
 
-    expectArrayWithSameContent(HyperFormula.getAllFunctionPlugins(), [SumifPlugin])
+    expectArrayWithSameContent(HyperFormula.getAllFunctionPlugins(), [ConditionalAggregationPlugin])
   })
 
   it('should return plugin for given functionId', () => {
-    expect(HyperFormula.getFunctionPlugin('SUMIF')).toBe(SumifPlugin)
+    expect(HyperFormula.getFunctionPlugin('SUMIF')).toBe(ConditionalAggregationPlugin)
   })
 
   it('should clear function registry', () => {
@@ -294,9 +306,9 @@ describe('Instance level formula registry', () => {
   })
 
   it('should return registered plugins', () => {
-    const engine = HyperFormula.buildFromArray([], {functionPlugins: [SumifPlugin, NumericAggregationPlugin, SumWithExtra]})
+    const engine = HyperFormula.buildFromArray([], {functionPlugins: [ConditionalAggregationPlugin, NumericAggregationPlugin, SumWithExtra]})
 
-    expectArrayWithSameContent(engine.getAllFunctionPlugins(), [SumifPlugin, NumericAggregationPlugin, SumWithExtra])
+    expectArrayWithSameContent(engine.getAllFunctionPlugins(), [ConditionalAggregationPlugin, NumericAggregationPlugin, SumWithExtra])
   })
 
   it('should instantiate engine with additional plugin', () => {
@@ -314,7 +326,7 @@ describe('Instance level formula registry', () => {
     const engine = HyperFormula.buildFromArray([])
 
     let registeredPlugins = new Set(engine.getAllFunctionPlugins())
-    expect(registeredPlugins.has(SumifPlugin)).toBe(true)
+    expect(registeredPlugins.has(ConditionalAggregationPlugin)).toBe(true)
     expect(registeredPlugins.has(FooPlugin)).toBe(false)
 
     engine.updateConfig({functionPlugins: [FooPlugin]})
@@ -326,7 +338,7 @@ describe('Instance level formula registry', () => {
   it('should return plugin for given functionId', () => {
     const engine = HyperFormula.buildFromArray([])
 
-    expect(engine.getFunctionPlugin('SUMIF')).toBe(SumifPlugin)
+    expect(engine.getFunctionPlugin('SUMIF')).toBe(ConditionalAggregationPlugin)
   })
 })
 
@@ -370,13 +382,13 @@ describe('Reserved functions', () => {
 
 describe('aliases', () => {
   it('should validate that alias target exists', () => {
-    expect( () => {
+    expect(() => {
       HyperFormula.registerFunctionPlugin(EmptyAliasPlugin)
     }).toThrow(FunctionPluginValidationError.functionMethodNotFound('foo', 'EmptyAliasPlugin'))
   })
 
   it('should validate that alias key is available', () => {
-    expect( () => {
+    expect(() => {
       HyperFormula.registerFunctionPlugin(OverloadedAliasPlugin)
     }).toThrow(new AliasAlreadyExisting('FOO', 'OverloadedAliasPlugin'))
   })

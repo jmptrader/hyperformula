@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {SimpleCellAddress} from '../Cell'
@@ -14,6 +14,7 @@ export class EmptyCellVertex {
     public address: SimpleCellAddress //might be outdated!
   ) {
   }
+
   /**
    * Retrieves cell value bound to that singleton
    */

@@ -1,9 +1,9 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
- /**
+/**
  * This is a class for detailed error messages across HyperFormula.
  */
 export class ErrorMessage {

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {CellError} from '../Cell'
@@ -10,7 +10,8 @@ export class ParsingErrorVertex {
   constructor(
     public readonly errors: ParsingError[],
     public readonly rawInput: string
-  ) {}
+  ) {
+  }
 
   public getCellValue(): CellError {
     return CellError.parsingError()

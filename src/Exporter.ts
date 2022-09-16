@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {CellError, ErrorType, SimpleCellAddress} from './Cell'
@@ -10,9 +10,9 @@ import {CellValueChange, ChangeExporter} from './ContentChanges'
 import {ErrorMessage} from './error-message'
 import {EmptyValue, getRawValue, InterpreterValue, isExtendedNumber} from './interpreter/InterpreterValue'
 import {SimpleRangeValue} from './interpreter/SimpleRangeValue'
+import {LazilyTransformingAstService} from './LazilyTransformingAstService'
 import {NamedExpressions} from './NamedExpressions'
 import {SheetIndexMappingFn, simpleCellAddressToString} from './parser/addressRepresentationConverters'
-import {LazilyTransformingAstService} from './LazilyTransformingAstService'
 
 export type ExportedChange = ExportedCellChange | ExportedNamedExpressionChange
 
@@ -59,7 +59,6 @@ export class Exporter implements ChangeExporter<ExportedChange> {
     private readonly lazilyTransformingService: LazilyTransformingAstService,
   ) {
   }
-
 
   public exportChange(change: CellValueChange): ExportedChange | ExportedChange[] {
     const value = change.value

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {
@@ -24,7 +24,8 @@ export class ColumnAddress implements AddressWithColumn {
     public readonly type: ReferenceType,
     public readonly col: number,
     public readonly sheet?: number
-  ) {}
+  ) {
+  }
 
   public static absolute(column: number, sheet?: number) {
     return new ColumnAddress(ReferenceType.ABSOLUTE, column, sheet)
@@ -32,6 +33,10 @@ export class ColumnAddress implements AddressWithColumn {
 
   public static relative(column: number, sheet?: number) {
     return new ColumnAddress(ReferenceType.RELATIVE, column, sheet)
+  }
+
+  public static compareByAbsoluteAddress(baseAddress: SimpleCellAddress): (colA: ColumnAddress, colB: ColumnAddress) => number {
+    return (colA: ColumnAddress, colB: ColumnAddress) =>  colA.toSimpleColumnAddress(baseAddress).col - colB.toSimpleColumnAddress(baseAddress).col
   }
 
   public isColumnAbsolute(): boolean {
@@ -74,7 +79,7 @@ export class ColumnAddress implements AddressWithColumn {
     return new ColumnAddress(this.type, col, this.sheet)
   }
 
-  public withAbsoluteSheet(sheet: number): ColumnAddress {
+  public withSheet(sheet: number | undefined): ColumnAddress {
     return new ColumnAddress(this.type, this.col, sheet)
   }
 
@@ -96,7 +101,7 @@ export class ColumnAddress implements AddressWithColumn {
 
   public unparse(baseAddress: SimpleCellAddress): Maybe<string> {
     const simpleAddress = this.toSimpleColumnAddress(baseAddress)
-    if(invalidSimpleColumnAddress(simpleAddress)) {
+    if (invalidSimpleColumnAddress(simpleAddress)) {
       return undefined
     }
     const column = columnIndexToLabel(simpleAddress.col)

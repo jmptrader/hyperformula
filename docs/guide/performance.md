@@ -64,16 +64,3 @@ recalculation but only change the shape of the worksheet, like
 `addRows`, `removeRows`, or `moveColumns` , we do not recommend suspending
 recalculation, as this may have a slightly negative impact on
 performance.
-
-## GPU acceleration
-
-Some formulas, e.g. MMULT, MAXPOOL, MEDIANPOOL, or TRANSPOSE, benefit from
-GPU acceleration. Thanks to the cores running thousands of threads
-at once, they calculate the input data sets up to 9x faster than
-when using the CPU. According to our observations the bigger the data set is,
-the bigger the performance gain.
-
-**For small data sets, the difference between the CPU and GPU is
-non-significant.**
-
-[See how to enable GPU acceleration &#8594;](enabling-gpu-acceleration.md)

@@ -20,7 +20,6 @@ describe('Unparse', () => {
   const namedExpressions = new NamedExpressions()
   const unparser = new Unparser(config, lexerConfig, sheetMapping.fetchDisplayName, namedExpressions)
 
-
   beforeEach(() => {
     unregisterAllLanguages()
     HyperFormula.registerLanguage(plPL.langCode, plPL)
@@ -411,7 +410,7 @@ describe('Unparse', () => {
   })
 
   it('unparsing numbers with decimal separator', () => {
-    const config = new Config({ decimalSeparator: ',', functionArgSeparator: ';' })
+    const config = new Config({decimalSeparator: ',', functionArgSeparator: ';'})
     const lexerConfig = buildLexerConfig(config)
     const sheetMapping = new SheetMapping(buildTranslationPackage(enGB))
     sheetMapping.addSheet('Sheet1')
@@ -592,6 +591,20 @@ describe('whitespaces', () => {
 
   it('should unparse arrays with whitespaces', () => {
     const formula = '= {  1,   2;    3,     4   }'
+    const ast = parser.parse(formula, adr('A1')).ast
+
+    const unparsed = unparser.unparse(ast, adr('A1'))
+
+    expect(unparsed).toEqual(formula)
+  })
+
+  it('when ignoreWhiteSpace = \'any\', should unparse a non-breakable space character', () => {
+    const config = new Config({ ignoreWhiteSpace: 'any' })
+    const lexerConfig = buildLexerConfig(config)
+    const parser = buildEmptyParserWithCaching(config, sheetMapping)
+    const unparser = new Unparser(config, lexerConfig, sheetMapping.fetchDisplayName, new NamedExpressions())
+
+    const formula = '=\u00A01'
     const ast = parser.parse(formula, adr('A1')).ast
 
     const unparsed = unparser.unparse(ast, adr('A1'))

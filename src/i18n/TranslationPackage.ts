@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {ErrorType, TranslatableErrorType} from '../Cell'
@@ -78,7 +78,7 @@ export class TranslationPackage {
   }
 
   public getErrorTranslation(key: ErrorType): string {
-    if(key === ErrorType.LIC) {
+    if (key === ErrorType.LIC) {
       return `#${ErrorType.LIC}!`
     }
     const val = this.errors[key]
@@ -107,8 +107,8 @@ export class TranslationPackage {
   }
 
   private checkErrors(): void {
-    for(const key of Object.values(ErrorType)){
-      if(! (key in this.errors) && (key !== ErrorType.LIC)){
+    for (const key of Object.values(ErrorType)) {
+      if (!(key in this.errors) && (key !== ErrorType.LIC)) {
         throw new MissingTranslationError(`errors.${key}`)
       }
     }

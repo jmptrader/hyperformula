@@ -1,9 +1,9 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
-import {IToken, tokenMatcher} from 'chevrotain'
+import {IToken, tokenMatcher, ILexingResult} from 'chevrotain'
 import {ErrorType, SimpleCellAddress} from '../Cell'
 import {FunctionRegistry} from '../interpreter/FunctionRegistry'
 import {AstNodeType, buildParsingErrorAst, RelativeDependency} from './'
@@ -16,7 +16,7 @@ import {
 import {Ast, imageWithWhitespace, ParsingError, ParsingErrorType, RangeSheetReferenceType} from './Ast'
 import {binaryOpTokenMap} from './binaryOpTokenMap'
 import {Cache} from './Cache'
-import {FormulaLexer, FormulaParser, IExtendedToken} from './FormulaParser'
+import {FormulaLexer, FormulaParser, ExtendedToken} from './FormulaParser'
 import {
   buildLexerConfig,
   CellReference,
@@ -24,7 +24,6 @@ import {
   ILexerConfig,
   ProcedureName,
   RowRange,
-  WhiteSpace,
 } from './LexerConfig'
 import {ParserConfig} from './ParserConfig'
 import {formatNumber} from './Unparser'
@@ -65,7 +64,7 @@ export class ParserWithCaching {
    * @param formulaAddress - address with regard to which formula should be parsed. Impacts computed addresses in R0C0 format.
    */
   public parse(text: string, formulaAddress: SimpleCellAddress): ParsingResult {
-    const lexerResult = this.lexer.tokenizeFormula(text)
+    const lexerResult = this.tokenizeFormula(text)
 
     if (lexerResult.errors.length > 0) {
       const errors = lexerResult.errors.map((e) =>
@@ -74,7 +73,13 @@ export class ParserWithCaching {
           message: e.message,
         }),
       )
-      return { ast: buildParsingErrorAst(), errors, hasVolatileFunction: false, hasStructuralChangeFunction: false, dependencies: [] }
+      return {
+        ast: buildParsingErrorAst(),
+        errors,
+        hasVolatileFunction: false,
+        hasStructuralChangeFunction: false,
+        dependencies: []
+      }
     }
 
     const hash = this.computeHashFromTokens(lexerResult.tokens, formulaAddress)
@@ -83,11 +88,11 @@ export class ParserWithCaching {
     if (cacheResult !== undefined) {
       ++this.statsCacheUsed
     } else {
-      const processedTokens = bindWhitespacesToTokens(lexerResult.tokens)
+      const processedTokens = this.bindWhitespacesToTokens(lexerResult.tokens)
       const parsingResult = this.formulaParser.parseFromTokens(processedTokens, formulaAddress)
 
       if (parsingResult.errors.length > 0) {
-        return { ...parsingResult, hasVolatileFunction: false, hasStructuralChangeFunction: false, dependencies: [] }
+        return {...parsingResult, hasVolatileFunction: false, hasStructuralChangeFunction: false, dependencies: []}
       } else {
         cacheResult = this.cache.set(hash, parsingResult.ast)
       }
@@ -128,7 +133,7 @@ export class ParserWithCaching {
         const procedureName = token.image.toUpperCase().slice(0, -1)
         const canonicalProcedureName = this.lexerConfig.functionMapping[procedureName] ?? procedureName
         hash = hash.concat(canonicalProcedureName, '(')
-      } else if (tokenMatcher(token, ColumnRange)){
+      } else if (tokenMatcher(token, ColumnRange)) {
         const [start, end] = token.image.split(':')
         const startAddress = columnAddressFromString(this.sheetMapping, start, baseAddress)
         const endAddress = columnAddressFromString(this.sheetMapping, end, baseAddress)
@@ -137,15 +142,15 @@ export class ParserWithCaching {
         } else {
           hash = hash.concat(startAddress.hash(true), ':', endAddress.hash(true))
         }
-      } else if (tokenMatcher(token, RowRange)){
-      const [start, end] = token.image.split(':')
-      const startAddress = rowAddressFromString(this.sheetMapping, start, baseAddress)
-      const endAddress = rowAddressFromString(this.sheetMapping, end, baseAddress)
-      if (startAddress === undefined || endAddress === undefined) {
-        hash = hash.concat('!REF')
-      } else {
-        hash = hash.concat(startAddress.hash(true), ':', endAddress.hash(true))
-      }
+      } else if (tokenMatcher(token, RowRange)) {
+        const [start, end] = token.image.split(':')
+        const startAddress = rowAddressFromString(this.sheetMapping, start, baseAddress)
+        const endAddress = rowAddressFromString(this.sheetMapping, end, baseAddress)
+        if (startAddress === undefined || endAddress === undefined) {
+          hash = hash.concat('!REF')
+        } else {
+          hash = hash.concat(startAddress.hash(true), ':', endAddress.hash(true))
+        }
       } else {
         hash = hash.concat(token.image)
       }
@@ -212,7 +217,7 @@ export class ParserWithCaching {
       }
       case AstNodeType.ARRAY: {
         const args = ast.args.map(row => row.map(val => this.computeHashOfAstNode(val)).join(',')).join(';')
-        return imageWithWhitespace('{'+args+imageWithWhitespace('}', ast.internalWhitespace), ast.leadingWhitespace)
+        return imageWithWhitespace('{' + args + imageWithWhitespace('}', ast.internalWhitespace), ast.leadingWhitespace)
       }
       case AstNodeType.PARENTHESIS: {
         const expression = this.computeHashOfAstNode(ast.expression)
@@ -224,28 +229,32 @@ export class ParserWithCaching {
       }
     }
   }
-}
 
-export function bindWhitespacesToTokens(tokens: IToken[]): IExtendedToken[] {
-  const processedTokens: IExtendedToken[] = []
+  public bindWhitespacesToTokens(tokens: IToken[]): ExtendedToken[] {
+    const processedTokens: ExtendedToken[] = []
 
-  const first = tokens[0]
-  if (!tokenMatcher(first, WhiteSpace)) {
-    processedTokens.push(first)
-  }
-
-  for (let i = 1; i < tokens.length; ++i) {
-    const current = tokens[i] as IExtendedToken
-    if (tokenMatcher(current, WhiteSpace)) {
-      continue
+    const first = tokens[0]
+    if (!tokenMatcher(first, this.lexerConfig.WhiteSpace)) {
+      processedTokens.push(first)
     }
 
-    const previous = tokens[i - 1]
-    if (tokenMatcher(previous, WhiteSpace)) {
-      current.leadingWhitespace = previous
+    for (let i = 1; i < tokens.length; ++i) {
+      const current = tokens[i] as ExtendedToken
+      if (tokenMatcher(current, this.lexerConfig.WhiteSpace)) {
+        continue
+      }
+
+      const previous = tokens[i - 1]
+      if (tokenMatcher(previous, this.lexerConfig.WhiteSpace)) {
+        current.leadingWhitespace = previous
+      }
+      processedTokens.push(current)
     }
-    processedTokens.push(current)
+
+    return processedTokens
   }
 
-  return processedTokens
+  public tokenizeFormula(text: string): ILexingResult {
+    return this.lexer.tokenizeFormula(text)
+  }
 }

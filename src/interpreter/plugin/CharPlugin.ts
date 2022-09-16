@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {CellError, ErrorType} from '../../Cell'
@@ -10,13 +10,13 @@ import {InterpreterState} from '../InterpreterState'
 import {InterpreterValue} from '../InterpreterValue'
 import {ArgumentTypes, FunctionPlugin, FunctionPluginTypecheck} from './FunctionPlugin'
 
-export class CharPlugin extends FunctionPlugin implements FunctionPluginTypecheck<CharPlugin>{
+export class CharPlugin extends FunctionPlugin implements FunctionPluginTypecheck<CharPlugin> {
   public static implementedFunctions = {
     'CHAR': {
       method: 'char',
       parameters: [
-          {argumentType: ArgumentTypes.NUMBER}
-        ],
+        {argumentType: ArgumentTypes.NUMBER}
+      ],
     },
     'UNICHAR': {
       method: 'unichar',

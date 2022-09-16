@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {RawTranslationPackage} from '..'
@@ -20,7 +20,7 @@ const dictionary: RawTranslationPackage = {
   },
   functions: {
     FILTER: 'FILTER',
-    'ARRAY_CONSTRAIN' : 'ARRAY_CONSTRAIN',
+    'ARRAY_CONSTRAIN': 'ARRAY_CONSTRAIN',
     ARRAYFORMULA: 'ARRAYFORMULA',
     ABS: 'ABS',
     ACOS: 'BOOGCOS',
@@ -133,12 +133,14 @@ const dictionary: RawTranslationPackage = {
     MATCH: 'VERGELIJKEN',
     MAX: 'MAX',
     MAXA: 'MAXA',
+    MAXIFS: 'MAX.ALS.VOORWAARDEN',
     MAXPOOL: 'MAXPOOL',
     MEDIAN: 'MEDIAAN',
     MEDIANPOOL: 'MEDIANPOOL',
     MID: 'DEEL',
     MIN: 'MIN',
     MINA: 'MINA',
+    MINIFS: 'MIN.ALS.VOORWAARDEN',
     MINUTE: 'MINUUT',
     MIRR: 'GIR',
     MMULT: 'PRODUCTMAT',

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {AbsoluteCellRange} from '../AbsoluteCellRange'
@@ -16,15 +16,12 @@ export type CriterionCache = Map<string, [any, CriterionLambda[]]>
  * Represents vertex bound to range
  */
 export class RangeVertex {
+  public bruteForce: boolean
   /** Cache for associative aggregate functions. */
   private functionCache: Map<string, any>
-
   /** Cache for criterion-based functions. */
   private criterionFunctionCache: Map<string, CriterionCache>
-
   private dependentCacheRanges: Set<RangeVertex>
-
-  public bruteForce: boolean
 
   constructor(public range: AbsoluteCellRange) {
     this.functionCache = new Map()

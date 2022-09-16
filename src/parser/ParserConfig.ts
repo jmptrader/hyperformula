@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {TranslatableErrorType} from '../Cell'
@@ -11,6 +11,7 @@ export interface ParserConfig {
   decimalSeparator: '.' | ',',
   arrayColumnSeparator: ',' | ';',
   arrayRowSeparator: ';' | '|',
+  ignoreWhiteSpace: 'standard' | 'any',
   translationPackage: TranslationPackage,
   errorMapping: Record<string, TranslatableErrorType>,
   maxColumns: number,

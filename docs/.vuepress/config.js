@@ -1,5 +1,6 @@
 const highlight = require('./highlight');
 const regexPlugin = require('markdown-it-regex').default;
+const searchBoxPlugin = require('./plugins/search-box');
 const HyperFormula = require('../../dist/hyperformula.full');
 const fs = require('fs');
 const path = require('path');
@@ -21,8 +22,9 @@ module.exports = {
     // Google Console
     ['meta', { name: 'google-site-verification', content: 'MZpSOa8SNvFLRRGwUQpYVZ78kIHQoPVdVbafHhJ_d4Q' }]
   ],
-  base: '/hyperformula/',
+  base: '/',
   plugins: [
+    searchBoxPlugin,
     // [
     //   'vuepress-plugin-clean-urls',
     //   {
@@ -85,16 +87,14 @@ module.exports = {
     repo: 'handsontable/hyperformula',
     docsRepo: 'handsontable/hyperformula',
     docsDir: 'docs',
-    docsBranch: 'develop',
+    docsBranch: 'master',
     editLinks: true,
     editLinkText: 'Help us improve this page',
     lastUpdated: false,
     smoothScroll: false,
     searchPlaceholder: 'Search...',
-    // algolia: {
-    //   apiKey: '<API_KEY>',
-    //   indexName: '<INDEX_NAME>'
-    // },
+    searchLimitApi: 10,
+    searchLimitGuide: 10,
     nav: [
       { text: 'Guide', link: '/' },
       { text: 'API Reference', link: '/api/' },
@@ -161,7 +161,6 @@ module.exports = {
             ['/guide/advanced-usage', 'Advanced usage'],
             ['/guide/configuration-options', 'Configuration options'],
             ['/guide/license-key', 'License key'],
-            ['/guide/known-limitations', 'Known limitations'],
           ]
         },
         {
@@ -196,7 +195,7 @@ module.exports = {
             ['/guide/order-of-precendece', 'Order of precedence'],
             ['/guide/built-in-functions', 'Built-in functions'],
             ['/guide/volatile-functions', 'Volatile functions'],
-            ['/guide/named-ranges', 'Named ranges'],
+            ['/guide/named-expressions', 'Named expressions'],
             ['/guide/arrays', 'Array formulas'],
           ]
         },
@@ -209,14 +208,24 @@ module.exports = {
           ]
         },
         {
+          title: 'Compatibility',
+          collapsable: false,
+          children: [
+            ['/guide/compatibility-with-microsoft-excel', 'Compatibility with Microsoft Excel'],
+            ['/guide/compatibility-with-google-sheets', 'Compatibility with Google Sheets'],
+            ['/guide/list-of-differences', 'Runtime differences with Microsoft Excel and Google Sheets'],
+          ]
+        },
+        {
           title: 'Advanced topics',
           collapsable: false,
           children: [
             ['/guide/key-concepts', 'Key concepts'],
-            ['/guide/building', 'Building'],
-            ['/guide/testing', 'Testing'],
+            ['/guide/dependency-graph', 'Dependency graph'],
+            ['/guide/building', 'Building & testing'],
             ['/guide/custom-functions', 'Custom functions'],
             ['/guide/performance', 'Performance'],
+            ['/guide/known-limitations', 'Known limitations'],
           ]
         },
         {
@@ -225,6 +234,7 @@ module.exports = {
           children: [
             ['/guide/release-notes', 'Release notes'],
             ['/guide/migration-from-0.6-to-1.0', 'Migrating from 0.6 to 1.0'],
+            ['/guide/migration-from-1.0-to-2.0', 'Migrating from 1.x to 2.0'],
           ]
         },
         {
@@ -234,7 +244,6 @@ module.exports = {
             ['/guide/contributing', 'Contributing'],
             ['/guide/code-of-conduct.md', 'Code of conduct'],
             ['/guide/branding', 'Branding'],
-            ['/guide/acknowledgements', 'Acknowledgments'],
             ['/guide/contact', 'Contact'],
           ]
         },

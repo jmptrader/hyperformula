@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {DateTime, SimpleDate, SimpleTime} from './DateTimeHelper'
@@ -13,15 +13,15 @@ export function defaultParseToDateTime(dateTimeString: string, dateFormat?: stri
     dateTimeString = dateTimeString.substring(0, dateTimeString.length - 2).trim()
   } else {
     ampmtoken = dateTimeString.substring(dateTimeString.length - 1)
-    if(ampmtoken === 'a' || ampmtoken === 'p') {
+    if (ampmtoken === 'a' || ampmtoken === 'p') {
       dateTimeString = dateTimeString.substring(0, dateTimeString.length - 1).trim()
     } else {
       ampmtoken = undefined
     }
   }
   const dateItems = dateTimeString.split(/[ /.-]/g)
-  if(dateItems.length >= 2 && dateItems[dateItems.length-2].includes(':')) {
-    dateItems[dateItems.length-2] = dateItems[dateItems.length-2] + '.' + dateItems[dateItems.length-1]
+  if (dateItems.length >= 2 && dateItems[dateItems.length - 2].includes(':')) {
+    dateItems[dateItems.length - 2] = dateItems[dateItems.length - 2] + '.' + dateItems[dateItems.length - 1]
     dateItems.pop()
   }
   const timeItems = dateItems[dateItems.length - 1].split(':')
@@ -46,9 +46,11 @@ export function defaultParseToDateTime(dateTimeString: string, dateFormat?: stri
   }
 }
 
-export const secondsExtendedRegexp = /^ss\.(s+|0+)$/
+export const secondsExtendedRegexp = /^ss(\.(s+|0+))?$/
 
 function defaultParseToTime(timeItems: string[], timeFormat: Maybe<string>): Maybe<SimpleTime> {
+  const precision = 1000
+
   if (timeFormat === undefined) {
     return undefined
   }
@@ -67,17 +69,14 @@ function defaultParseToTime(timeItems: string[], timeFormat: Maybe<string>): May
     ampm = true
     timeItems.pop()
   }
-  let fractionOfSecondPrecision: number = 0
-  if(formatItems.length >= 1 && secondsExtendedRegexp.test(formatItems[formatItems.length-1])) {
-    fractionOfSecondPrecision = formatItems[formatItems.length-1].length-3
-    formatItems[formatItems.length-1] = 'ss'
-  }
+
   if (timeItems.length !== formatItems.length) {
     return undefined
   }
+
   const hourIndex = formatItems.indexOf('hh')
   const minuteIndex = formatItems.indexOf('mm')
-  const secondIndex = formatItems.indexOf('ss')
+  const secondIndex = formatItems.findIndex(item => secondsExtendedRegexp.test(item))
 
   const hourString = hourIndex !== -1 ? timeItems[hourIndex] : '0'
   if (!/^\d+$/.test(hourString)) {
@@ -104,8 +103,8 @@ function defaultParseToTime(timeItems: string[], timeFormat: Maybe<string>): May
   if (!/^\d+(\.\d+)?$/.test(secondString)) {
     return undefined
   }
-  let seconds = Number(secondString)
-  seconds = Math.round(seconds * Math.pow(10, fractionOfSecondPrecision))/Math.pow(10, fractionOfSecondPrecision)
+
+  const seconds = Math.round(Number(secondString) * precision) / precision
 
   return {hours, minutes, seconds}
 }

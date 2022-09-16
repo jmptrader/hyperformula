@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {AbsoluteCellRange} from '../../AbsoluteCellRange'
@@ -15,6 +15,7 @@ import {InterpreterState} from '../InterpreterState'
 import {EmptyValue, ExtendedNumber, getRawValue, InternalScalarValue, isExtendedNumber} from '../InterpreterValue'
 import {SimpleRangeValue} from '../SimpleRangeValue'
 import {ArgumentTypes, FunctionPlugin, FunctionPluginTypecheck} from './FunctionPlugin'
+import {RangeVertex} from '../../DependencyGraph'
 
 export type BinaryOperation<T> = (left: T, right: T) => T
 
@@ -34,15 +35,15 @@ class MomentsAggregate {
 
   public static empty = new MomentsAggregate(0, 0, 0)
 
-  public static single(arg: number): MomentsAggregate {
-    return new MomentsAggregate(arg*arg, arg, 1)
-  }
-
   constructor(
     public readonly sumsq: number,
     public readonly sum: number,
     public readonly count: number,
   ) {
+  }
+
+  public static single(arg: number): MomentsAggregate {
+    return new MomentsAggregate(arg * arg, arg, 1)
   }
 
   public compose(other: MomentsAggregate) {
@@ -58,23 +59,23 @@ class MomentsAggregate {
   }
 
   public varSValue(): Maybe<number> {
-    if(this.count > 1) {
-      return (this.sumsq - (this.sum*this.sum)/this.count)/(this.count-1)
+    if (this.count > 1) {
+      return (this.sumsq - (this.sum * this.sum) / this.count) / (this.count - 1)
     } else {
       return undefined
     }
   }
 
   public varPValue(): Maybe<number> {
-    if(this.count > 0) {
-      return (this.sumsq - (this.sum*this.sum)/this.count)/this.count
+    if (this.count > 0) {
+      return (this.sumsq - (this.sum * this.sum) / this.count) / this.count
     } else {
       return undefined
     }
   }
 }
 
-export class NumericAggregationPlugin extends FunctionPlugin implements FunctionPluginTypecheck<NumericAggregationPlugin>{
+export class NumericAggregationPlugin extends FunctionPlugin implements FunctionPluginTypecheck<NumericAggregationPlugin> {
   public static implementedFunctions = {
     'SUM': {
       method: 'sum',
@@ -353,7 +354,7 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
       return result
     } else {
       const val = result.varSValue()
-      return val === undefined  ? new CellError(ErrorType.DIV_BY_ZERO) : Math.sqrt(val)
+      return val === undefined ? new CellError(ErrorType.DIV_BY_ZERO) : Math.sqrt(val)
     }
   }
 
@@ -364,7 +365,7 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
       return result
     } else {
       const val = result.varPValue()
-      return val === undefined  ? new CellError(ErrorType.DIV_BY_ZERO) : Math.sqrt(val)
+      return val === undefined ? new CellError(ErrorType.DIV_BY_ZERO) : Math.sqrt(val)
     }
   }
 
@@ -417,7 +418,7 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
     }
   }
 
-  private reduceAggregate(args: Ast[], state: InterpreterState): MomentsAggregate | CellError{
+  private reduceAggregate(args: Ast[], state: InterpreterState): MomentsAggregate | CellError {
     return this.reduce<MomentsAggregate>(args, state, MomentsAggregate.empty, '_AGGREGATE', (left, right) => {
         return left.compose(right)
       }, (arg): MomentsAggregate => {
@@ -427,7 +428,7 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
     )
   }
 
-  private reduceAggregateA(args: Ast[], state: InterpreterState): MomentsAggregate | CellError{
+  private reduceAggregateA(args: Ast[], state: InterpreterState): MomentsAggregate | CellError {
     return this.reduce<MomentsAggregate>(args, state, MomentsAggregate.empty, '_AGGREGATE_A', (left, right) => {
         return left.compose(right)
       }, (arg): MomentsAggregate => {
@@ -474,7 +475,7 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
       return result
     } else {
       const val = result.varSValue()
-      return val === undefined  ? new CellError(ErrorType.DIV_BY_ZERO) : Math.sqrt(val)
+      return val === undefined ? new CellError(ErrorType.DIV_BY_ZERO) : Math.sqrt(val)
     }
   }
 
@@ -485,7 +486,7 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
       return result
     } else {
       const val = result.varPValue()
-      return val === undefined  ? new CellError(ErrorType.DIV_BY_ZERO) : Math.sqrt(val)
+      return val === undefined ? new CellError(ErrorType.DIV_BY_ZERO) : Math.sqrt(val)
     }
   }
 
@@ -553,7 +554,7 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
       }
       if (arg.type === AstNodeType.CELL_RANGE || arg.type === AstNodeType.COLUMN_RANGE || arg.type === AstNodeType.ROW_RANGE) {
         const val = this.evaluateRange(arg, state, initialAccValue, functionName, reducingFunction, mapFunction, coercionFunction)
-        if(val instanceof CellError) {
+        if (val instanceof CellError) {
           return val
         }
         return reducingFunction(val, acc)
@@ -626,9 +627,7 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
       }
     }
 
-    const rangeStart = range.start
-    const rangeEnd = range.end
-    const rangeVertex = this.dependencyGraph.getRange(rangeStart, rangeEnd)!
+    const rangeVertex = this.dependencyGraph.getRange(range.start, range.end)
 
     if (rangeVertex === undefined) {
       throw new Error('Range does not exists in graph')
@@ -636,7 +635,7 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
 
     let value = rangeVertex.getFunctionValue(functionName) as (T | CellError | undefined)
     if (value === undefined) {
-      const rangeValues = this.getRangeValues(functionName, range, mapFunction, coercionFunction)
+      const rangeValues = this.getRangeValues(functionName, range, rangeVertex, mapFunction, coercionFunction)
       value = rangeValues.reduce((arg1, arg2) => {
         if (arg1 instanceof CellError) {
           return arg1
@@ -660,15 +659,15 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
    *
    * @param functionName - function name (e.g. SUM)
    * @param range - cell range
+   * @param rangeVertex
    * @param mapFunction
    * @param coercionFunction
    */
-  private getRangeValues<T>(functionName: string, range: AbsoluteCellRange, mapFunction: MapOperation<T>, coercionFunction: coercionOperation): (T | CellError)[] {
+  private getRangeValues<T>(functionName: string, range: AbsoluteCellRange, rangeVertex: RangeVertex, mapFunction: MapOperation<T>, coercionFunction: coercionOperation): (T | CellError)[] {
     const rangeResult: (T | CellError)[] = []
     const {smallerRangeVertex, restRange} = this.dependencyGraph.rangeMapping.findSmallerRange(range)
-    const currentRangeVertex = this.dependencyGraph.getRange(range.start, range.end)!
     let actualRange: AbsoluteCellRange
-    if (smallerRangeVertex !== undefined && this.dependencyGraph.existsEdge(smallerRangeVertex, currentRangeVertex)) {
+    if (smallerRangeVertex !== undefined && this.dependencyGraph.existsEdge(smallerRangeVertex, rangeVertex)) {
       const cachedValue: Maybe<T> = smallerRangeVertex.getFunctionValue(functionName)
       if (cachedValue !== undefined) {
         rangeResult.push(cachedValue)

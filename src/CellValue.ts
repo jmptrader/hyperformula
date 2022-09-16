@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {CellError, ErrorType} from './Cell'
@@ -11,6 +11,7 @@ export type CellValue = NoErrorCellValue | DetailedCellError
 export class DetailedCellError {
   public readonly type: ErrorType
   public readonly message: string
+
   constructor(
     error: CellError,
     public readonly value: string,

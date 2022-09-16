@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {IToken} from 'chevrotain'
@@ -8,7 +8,7 @@ import {CellError} from '../Cell'
 import {AddressWithSheet} from './Address'
 import {CellAddress} from './CellAddress'
 import {ColumnAddress} from './ColumnAddress'
-import {IExtendedToken} from './FormulaParser'
+import {ExtendedToken} from './FormulaParser'
 import {RowAddress} from './RowAddress'
 
 export type Ast =
@@ -141,7 +141,7 @@ export interface StringAst extends AstWithWhitespace {
   value: string,
 }
 
-export const buildStringAst = (token: IExtendedToken): StringAst => ({
+export const buildStringAst = (token: ExtendedToken): StringAst => ({
   type: AstNodeType.STRING,
   value: token.image.slice(1, -1),
   leadingWhitespace: token.leadingWhitespace?.image,
@@ -176,7 +176,7 @@ export const buildCellRangeAst = (start: CellAddress, end: CellAddress, sheetRef
   }
 }
 
-export interface ColumnRangeAst extends AstWithWhitespace{
+export interface ColumnRangeAst extends AstWithWhitespace {
   type: AstNodeType.COLUMN_RANGE,
   start: ColumnAddress,
   end: ColumnAddress,
@@ -194,7 +194,7 @@ export const buildColumnRangeAst = (start: ColumnAddress, end: ColumnAddress, sh
   }
 }
 
-export interface RowRangeAst extends AstWithWhitespace{
+export interface RowRangeAst extends AstWithWhitespace {
   type: AstNodeType.ROW_RANGE,
   start: RowAddress,
   end: RowAddress,

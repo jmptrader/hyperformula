@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {FunctionTranslationsPackage} from './FunctionRegistry'
@@ -12,7 +12,7 @@ import {
   ImplementedFunctions
 } from './plugin/FunctionPlugin'
 
-export { 
+export {
   FunctionPluginDefinition,
   FunctionArgument,
   FunctionPlugin,

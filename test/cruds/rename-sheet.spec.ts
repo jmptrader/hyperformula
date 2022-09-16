@@ -2,26 +2,26 @@ import {HyperFormula, NoSheetWithIdError, SheetNameAlreadyTakenError} from '../.
 
 describe('Is it possible to rename sheet', () => {
   it('true if possible', () => {
-    const engine = HyperFormula.buildFromSheets({ 'Sheet1': []})
+    const engine = HyperFormula.buildFromSheets({'Sheet1': []})
 
     expect(engine.isItPossibleToRenameSheet(0, 'Foo')).toEqual(true)
     expect(engine.isItPossibleToRenameSheet(0, '~`!@#$%^&*()_-+_=/|?{}[]\"')).toEqual(true)
   })
 
   it('true if same name', () => {
-    const engine = HyperFormula.buildFromSheets({ 'Sheet1': []})
+    const engine = HyperFormula.buildFromSheets({'Sheet1': []})
 
     expect(engine.isItPossibleToRenameSheet(0, 'Sheet1')).toEqual(true)
   })
 
   it('false if sheet does not exists', () => {
-    const engine = HyperFormula.buildFromSheets({ 'Sheet1': []})
+    const engine = HyperFormula.buildFromSheets({'Sheet1': []})
 
     expect(engine.isItPossibleToRenameSheet(1, 'Foo')).toEqual(false)
   })
 
   it('false if given name is taken', () => {
-    const engine = HyperFormula.buildFromSheets({ 'Sheet1': [], 'Sheet2': [] })
+    const engine = HyperFormula.buildFromSheets({'Sheet1': [], 'Sheet2': []})
 
     expect(engine.isItPossibleToRenameSheet(0, 'Sheet2')).toEqual(false)
   })
@@ -75,5 +75,13 @@ describe('Rename sheet', () => {
 
     expect(engine.getSheetName(0)).toBe('FOO')
     expect(engine.doesSheetExist('FOO')).toBe(true)
+  })
+
+  it('should update the sheet dependencies', () => {
+    const engine = HyperFormula.buildFromSheets({'OldSheetName': [[42]], 'DependantSheet': [['=OldSheetName!A1']]})
+
+    engine.renameSheet(0, 'NewSheetName')
+
+    expect(engine.getCellFormula({ sheet: 1, row: 0, col: 0 })).toEqual('=NewSheetName!A1')
   })
 })

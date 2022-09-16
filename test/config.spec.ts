@@ -1,8 +1,9 @@
 import {HyperFormula} from '../src'
 import {Config} from '../src/Config'
 import {enGB, plPL} from '../src/i18n/languages'
-import {EmptyValue} from '../src/interpreter/InterpreterValue'
-import {unregisterAllLanguages} from './testUtils'
+import {EmptyValue, NumberType} from '../src/interpreter/InterpreterValue'
+import {adr, unregisterAllLanguages} from './testUtils'
+import {CellValueNoNumber} from '../src/Cell'
 
 describe('Config', () => {
   beforeEach(() => {
@@ -24,15 +25,15 @@ describe('Config', () => {
   })
 
   it('can translate functions', () => {
-    const config = new Config({ language: 'plPL' })
+    const config = new Config({language: 'plPL'})
 
     expect(config.translationPackage.getFunctionTranslation('SUM')).toEqual('SUMA')
   })
 
-  it( 'validation: boolean params', () => {
+  it('validation: boolean params', () => {
     // eslint-disable-next-line
     // @ts-ignore
-    expect( () => new Config({ignorePunctuation: 1})).toThrowError('Expected value of type: boolean for config parameter: ignorePunctuation')
+    expect(() => new Config({ignorePunctuation: 1})).toThrowError('Expected value of type: boolean for config parameter: ignorePunctuation')
     // eslint-disable-next-line
     // @ts-ignore
     expect(() => new Config({accentSensitive: 'abcd'})).toThrowError('Expected value of type: boolean for config parameter: accentSensitive')
@@ -41,16 +42,16 @@ describe('Config', () => {
     expect(() => new Config({caseSensitive: 'abcd'})).toThrowError('Expected value of type: boolean for config parameter: caseSensitive')
     // eslint-disable-next-line
     // @ts-ignore
-    expect( () => new Config({smartRounding: []})).toThrowError('Expected value of type: boolean for config parameter: smartRounding')
+    expect(() => new Config({smartRounding: []})).toThrowError('Expected value of type: boolean for config parameter: smartRounding')
     // eslint-disable-next-line
     // @ts-ignore
-    expect( () => new Config({useColumnIndex: Symbol()})).toThrowError('Expected value of type: boolean for config parameter: useColumnIndex')
+    expect(() => new Config({useColumnIndex: Symbol()})).toThrowError('Expected value of type: boolean for config parameter: useColumnIndex')
     // eslint-disable-next-line
     // @ts-ignore
-    expect( () => new Config({leapYear1900: () => 1})).toThrowError('Expected value of type: boolean for config parameter: leapYear1900')
+    expect(() => new Config({leapYear1900: () => 1})).toThrowError('Expected value of type: boolean for config parameter: leapYear1900')
   })
 
-  it( 'validation: number params', () => {
+  it('validation: number params', () => {
     // eslint-disable-next-line
     // @ts-ignore
     expect(() => new Config({nullYear: true})).toThrowError('Expected value of type: number for config parameter: nullYear')
@@ -62,7 +63,7 @@ describe('Config', () => {
     expect(() => new Config({precisionEpsilon: {}})).toThrowError('Expected value of type: number for config parameter: precisionEpsilon')
   })
 
-  it( 'validation: string params', () => {
+  it('validation: string params', () => {
     // eslint-disable-next-line
     // @ts-ignore
     expect(() => new Config({functionArgSeparator: 123})).toThrowError('Expected value of type: string for config parameter: functionArgSeparator')
@@ -71,7 +72,7 @@ describe('Config', () => {
     expect(() => new Config({localeLang: EmptyValue})).toThrowError('Expected value of type: string for config parameter: localeLang')
   })
 
-  it( 'validation: function params', () => {
+  it('validation: function params', () => {
     // eslint-disable-next-line
     // @ts-ignore
     expect(() => new Config({parseDateTime: true})).toThrowError('Expected value of type: function for config parameter: parseDateTime')
@@ -80,17 +81,15 @@ describe('Config', () => {
     expect(() => new Config({stringifyDateTime: 1})).toThrowError('Expected value of type: function for config parameter: stringifyDateTime')
   })
 
-  it( 'validation: other params', () => {
-    // eslint-disable-next-line
-    // @ts-ignore
-    expect(() => new Config({nullDate: { year: 123, month: 123, day: true }
+  it('validation: other params', () => {
+    expect(() => new Config({
+      // eslint-disable-next-line
+      // @ts-ignore
+      nullDate: {year: 123, month: 123, day: true}
     })).toThrowError('Expected value of type: IDate for config parameter: nullDate')
     // eslint-disable-next-line
     // @ts-ignore
     expect(() => new Config({dateFormats: {}})).toThrowError('Expected value of type: array for config parameter: dateFormats')
-    // eslint-disable-next-line
-    // @ts-ignore
-    expect(() => new Config({gpuMode: 'abcd'})).toThrowError('Expected one of \'gpu\' \'cpu\' \'dev\' for config parameter: gpuMode')
     // eslint-disable-next-line
     // @ts-ignore
     expect(() => new Config({caseFirst: 'abcd'})).toThrowError('Expected one of \'upper\' \'lower\' \'false\' for config parameter: caseFirst')
@@ -98,33 +97,39 @@ describe('Config', () => {
 
   it('should throw error when there is a conflict between separators', () => {
     expect(() => {
-      new Config({ decimalSeparator: ',', functionArgSeparator: ',', thousandSeparator: ' ' })
+      new Config({decimalSeparator: ',', functionArgSeparator: ',', thousandSeparator: ' '})
     }).toThrowError('Config initialization failed. Parameters in conflict: [decimalSeparator,functionArgSeparator]')
     expect(() => {
-      new Config({ decimalSeparator: ',', functionArgSeparator: ';', thousandSeparator: ',' })
+      new Config({decimalSeparator: ',', functionArgSeparator: ';', thousandSeparator: ','})
     }).toThrowError('Config initialization failed. Parameters in conflict: [decimalSeparator,thousandSeparator]')
     expect(() => {
-      new Config({ decimalSeparator: '.', functionArgSeparator: ',', thousandSeparator: ',' })
+      new Config({decimalSeparator: '.', functionArgSeparator: ',', thousandSeparator: ','})
     }).toThrowError('Config initialization failed. Parameters in conflict: [functionArgSeparator,thousandSeparator]')
     expect(() => {
-      new Config({ decimalSeparator: ',', functionArgSeparator: ',', thousandSeparator: ',' })
+      new Config({decimalSeparator: ',', functionArgSeparator: ',', thousandSeparator: ','})
     }).toThrowError('Config initialization failed. Parameters in conflict: [decimalSeparator,functionArgSeparator,thousandSeparator]')
     expect(() => {
-      new Config({ arrayColumnSeparator: ';', arrayRowSeparator: ';'})
+      new Config({arrayColumnSeparator: ';', arrayRowSeparator: ';'})
     }).toThrowError('Config initialization failed. Parameters in conflict: [arrayColumnSeparator,arrayRowSeparator]')
   })
 
   it('should throw error when currency symbol is empty', () => {
     expect(() => {
-      new Config({ currencySymbol: [''] })
+      new Config({currencySymbol: ['']})
     }).toThrowError('Config parameter currencySymbol cannot be empty.')
+  })
+
+  it('should throw error when currency symbol is not a string', () => {
+    expect(() => {
+      new Config({currencySymbol: [ 42 as unknown as string ]})
+    }).toThrowError('Expected value of type: string[] for config parameter: currencySymbol')
   })
 
   it('should throw error when currency symbol is not an array', () => {
     expect(() => {
       // eslint-disable-next-line
       // @ts-ignore
-      new Config({ currencySymbol: '$' })
+      new Config({currencySymbol: '$'})
     }).toThrowError('Expected value of type: array for config parameter: currencySymbol')
   })
 
@@ -132,7 +137,7 @@ describe('Config', () => {
     expect(() => {
       // eslint-disable-next-line
       // @ts-ignore
-      new Config({ decimalSeparator: ';' })
+      new Config({decimalSeparator: ';'})
     }).toThrowError('Expected one of \'.\' \',\' for config parameter: decimalSeparator')
   })
 
@@ -140,7 +145,7 @@ describe('Config', () => {
     expect(() => {
       // eslint-disable-next-line
       // @ts-ignore
-      new Config({ thousandSeparator: ';' })
+      new Config({thousandSeparator: ';'})
     }).toThrowError('Expected one of \'\' \',\' \' \' \'.\' for config parameter: thousandSeparator')
   })
 
@@ -148,7 +153,7 @@ describe('Config', () => {
     expect(() => {
       // eslint-disable-next-line
       // @ts-ignore
-      new Config({ arrayRowSeparator: ',' })
+      new Config({arrayRowSeparator: ','})
     }).toThrowError('Expected one of \';\' \'|\' for config parameter: arrayRowSeparator')
   })
 
@@ -156,51 +161,218 @@ describe('Config', () => {
     expect(() => {
       // eslint-disable-next-line
       // @ts-ignore
-      new Config({ arrayColumnSeparator: '|' })
+      new Config({arrayColumnSeparator: '|'})
     }).toThrowError('Expected one of \',\' \';\' for config parameter: arrayColumnSeparator')
   })
 
   it('#undoLimit validation', () => {
-    expect(() => new Config({ undoLimit: 0 })).not.toThrowError()
-    expect(() => new Config({ undoLimit: 42 })).not.toThrowError()
-    expect(() => new Config({ undoLimit: Infinity })).not.toThrowError()
-    expect(() => new Config({ undoLimit: -1 })).toThrowError('Config parameter undoLimit should be at least 0')
+    expect(() => new Config({undoLimit: 0})).not.toThrowError()
+    expect(() => new Config({undoLimit: 42})).not.toThrowError()
+    expect(() => new Config({undoLimit: Infinity})).not.toThrowError()
+    expect(() => new Config({undoLimit: -1})).toThrowError('Config parameter undoLimit should be at least 0')
   })
 
   it('#precisionEpsilon', () => {
-    expect(() => new Config({ precisionEpsilon: 0 })).not.toThrowError()
-    expect(() => new Config({ precisionEpsilon: 42 })).not.toThrowError()
-    expect(() => new Config({ precisionEpsilon: Infinity })).not.toThrowError()
-    expect(() => new Config({ precisionEpsilon: -1 })).toThrowError('Config parameter precisionEpsilon should be at least 0')
+    expect(() => new Config({precisionEpsilon: 0})).not.toThrowError()
+    expect(() => new Config({precisionEpsilon: 42})).not.toThrowError()
+    expect(() => new Config({precisionEpsilon: Infinity})).not.toThrowError()
+    expect(() => new Config({precisionEpsilon: -1})).toThrowError('Config parameter precisionEpsilon should be at least 0')
   })
 
   it('#precisionRounding', () => {
-    expect(() => new Config({ precisionRounding: 0 })).not.toThrowError()
-    expect(() => new Config({ precisionRounding: 42 })).not.toThrowError()
-    expect(() => new Config({ precisionRounding: Infinity })).not.toThrowError()
-    expect(() => new Config({ precisionRounding: -1 })).toThrowError('Config parameter precisionRounding should be at least 0')
+    expect(() => new Config({precisionRounding: 0})).not.toThrowError()
+    expect(() => new Config({precisionRounding: 42})).not.toThrowError()
+    expect(() => new Config({precisionRounding: Infinity})).not.toThrowError()
+    expect(() => new Config({precisionRounding: -1})).toThrowError('Config parameter precisionRounding should be at least 0')
   })
 
   it('#maxRows', () => {
-    expect(() => new Config({ maxRows: 1 })).not.toThrowError()
-    expect(() => new Config({ maxRows: 42 })).not.toThrowError()
-    expect(() => new Config({ maxRows: Infinity })).not.toThrowError()
-    expect(() => new Config({ maxRows: 0 })).toThrowError('Config parameter maxRows should be at least 1')
+    expect(() => new Config({maxRows: 1})).not.toThrowError()
+    expect(() => new Config({maxRows: 42})).not.toThrowError()
+    expect(() => new Config({maxRows: Infinity})).not.toThrowError()
+    expect(() => new Config({maxRows: 0})).toThrowError('Config parameter maxRows should be at least 1')
   })
 
   it('#maxColumns', () => {
-    expect(() => new Config({ maxColumns: 1 })).not.toThrowError()
-    expect(() => new Config({ maxColumns: 42 })).not.toThrowError()
-    expect(() => new Config({ maxColumns: Infinity })).not.toThrowError()
-    expect(() => new Config({ maxColumns: 0 })).toThrowError('Config parameter maxColumns should be at least 1')
+    expect(() => new Config({maxColumns: 1})).not.toThrowError()
+    expect(() => new Config({maxColumns: 42})).not.toThrowError()
+    expect(() => new Config({maxColumns: Infinity})).not.toThrowError()
+    expect(() => new Config({maxColumns: 0})).toThrowError('Config parameter maxColumns should be at least 1')
   })
 
   it('#nullYear', () => {
-    expect(() => new Config({ nullYear: -1 })).toThrowError('Config parameter nullYear should be at least 0')
-    expect(() => new Config({ nullYear: 0 })).not.toThrowError()
-    expect(() => new Config({ nullYear: 42 })).not.toThrowError()
-    expect(() => new Config({ nullYear: 100 })).not.toThrowError()
-    expect(() => new Config({ nullYear: 101 })).toThrowError('Config parameter nullYear should be at most 100')
+    expect(() => new Config({nullYear: -1})).toThrowError('Config parameter nullYear should be at least 0')
+    expect(() => new Config({nullYear: 0})).not.toThrowError()
+    expect(() => new Config({nullYear: 42})).not.toThrowError()
+    expect(() => new Config({nullYear: 100})).not.toThrowError()
+    expect(() => new Config({nullYear: 101})).toThrowError('Config parameter nullYear should be at most 100')
+  })
+
+  describe('#dateFormats', () => {
+    it('should use the data formats provided in config param', () => {
+      const dateFormats = ['DD/MM/YYYY']
+      const engine = HyperFormula.buildFromArray([
+        ['1'],
+        ['01/03/2022'],
+        ['2022/01/01'],
+      ], { dateFormats })
+      expect(engine.getCellValueDetailedType(adr('A1'))).toEqual(NumberType.NUMBER_RAW)
+      expect(engine.getCellValueDetailedType(adr('A2'))).toEqual(NumberType.NUMBER_DATE)
+      expect(engine.getCellValueDetailedType(adr('A3'))).toEqual(CellValueNoNumber.STRING)
+    })
+
+    it('should parse the dates with different separators', () => {
+      const dateFormats = ['DD/MM/YYYY']
+      const engine = HyperFormula.buildFromArray([[
+        '01/03/2022',
+        '01-03-2022',
+        '01 03 2022',
+        '01.03.2022',
+        '01/03-2022',
+        '01 03.2022',
+        '01 03/2022',
+        '01.03-2022',
+      ]], { dateFormats })
+      expect(engine.getCellValueDetailedType(adr('A1'))).toEqual(NumberType.NUMBER_DATE)
+      expect(engine.getCellValueFormat(adr('A1'))).toEqual('DD/MM/YYYY')
+      expect(engine.getCellValueDetailedType(adr('B1'))).toEqual(NumberType.NUMBER_DATE)
+      expect(engine.getCellValueFormat(adr('B1'))).toEqual('DD/MM/YYYY')
+      expect(engine.getCellValueDetailedType(adr('C1'))).toEqual(NumberType.NUMBER_DATE)
+      expect(engine.getCellValueFormat(adr('C1'))).toEqual('DD/MM/YYYY')
+      expect(engine.getCellValueDetailedType(adr('D1'))).toEqual(NumberType.NUMBER_DATE)
+      expect(engine.getCellValueFormat(adr('D1'))).toEqual('DD/MM/YYYY')
+      expect(engine.getCellValueDetailedType(adr('E1'))).toEqual(NumberType.NUMBER_DATE)
+      expect(engine.getCellValueFormat(adr('E1'))).toEqual('DD/MM/YYYY')
+      expect(engine.getCellValueDetailedType(adr('F1'))).toEqual(NumberType.NUMBER_DATE)
+      expect(engine.getCellValueFormat(adr('F1'))).toEqual('DD/MM/YYYY')
+      expect(engine.getCellValueDetailedType(adr('G1'))).toEqual(NumberType.NUMBER_DATE)
+      expect(engine.getCellValueFormat(adr('G1'))).toEqual('DD/MM/YYYY')
+      expect(engine.getCellValueDetailedType(adr('H1'))).toEqual(NumberType.NUMBER_DATE)
+      expect(engine.getCellValueFormat(adr('H1'))).toEqual('DD/MM/YYYY')
+    })
+  })
+
+  describe('#timeFormats', () => {
+    it('should work with the "hh:mm" format', () => {
+      const timeFormats = ['hh:mm']
+      const engine = HyperFormula.buildFromArray([
+        ['13.33'],
+        ['13:33'],
+        ['01:33'],
+        ['1:33'],
+        ['13:33:33'],
+      ], { timeFormats })
+      expect(engine.getCellValueDetailedType(adr('A1'))).toEqual(NumberType.NUMBER_RAW)
+      expect(engine.getCellValueDetailedType(adr('A2'))).toEqual(NumberType.NUMBER_TIME)
+      expect(engine.getCellValueDetailedType(adr('A3'))).toEqual(NumberType.NUMBER_TIME)
+      expect(engine.getCellValueDetailedType(adr('A4'))).toEqual(NumberType.NUMBER_TIME)
+      expect(engine.getCellValueDetailedType(adr('A5'))).toEqual(CellValueNoNumber.STRING)
+    })
+
+    it('should work with the "hh:mm:ss" format', () => {
+      const timeFormats = ['hh:mm:ss']
+      const engine = HyperFormula.buildFromArray([
+        ['13:33'],
+        ['13:33:00'],
+        ['01:33:33'],
+        ['1:33:33'],
+        ['13:33:33.3'],
+        ['13:33:33.33'],
+        ['13:33:33.333'],
+        ['13:33:33.3333'],
+        ['13:33:33.333333333333333333333333333333333333333333333333333333'],
+      ], { timeFormats })
+      expect(engine.getCellValueDetailedType(adr('A1'))).toEqual(CellValueNoNumber.STRING)
+      expect(engine.getCellValueDetailedType(adr('A2'))).toEqual(NumberType.NUMBER_TIME)
+      expect(engine.getCellValueDetailedType(adr('A3'))).toEqual(NumberType.NUMBER_TIME)
+      expect(engine.getCellValueDetailedType(adr('A4'))).toEqual(NumberType.NUMBER_TIME)
+      expect(engine.getCellValueDetailedType(adr('A5'))).toEqual(NumberType.NUMBER_TIME)
+      expect(engine.getCellValueDetailedType(adr('A6'))).toEqual(NumberType.NUMBER_TIME)
+      expect(engine.getCellValueDetailedType(adr('A7'))).toEqual(NumberType.NUMBER_TIME)
+      expect(engine.getCellValueDetailedType(adr('A8'))).toEqual(NumberType.NUMBER_TIME)
+      expect(engine.getCellValueDetailedType(adr('A9'))).toEqual(NumberType.NUMBER_TIME)
+    })
+
+    it('the parsing result should be the same regardless of decimal places specified in format string', () => {
+      const dateAsString = '13:33:33.33333'
+      const dateAsNumber = 0.564969131944444
+
+      let engine = HyperFormula.buildFromArray([[dateAsString]], { timeFormats: ['hh:mm:ss'] })
+      expect(engine.getCellValue(adr('A1'))).toEqual(dateAsNumber)
+
+      engine = HyperFormula.buildFromArray([[dateAsString]], { timeFormats: ['hh:mm:ss.s'] })
+      expect(engine.getCellValue(adr('A1'))).toEqual(dateAsNumber)
+
+      engine = HyperFormula.buildFromArray([[dateAsString]], { timeFormats: ['hh:mm:ss.ss'] })
+      expect(engine.getCellValue(adr('A1'))).toEqual(dateAsNumber)
+
+      engine = HyperFormula.buildFromArray([[dateAsString]], { timeFormats: ['hh:mm:ss.sss'] })
+      expect(engine.getCellValue(adr('A1'))).toEqual(dateAsNumber)
+
+      engine = HyperFormula.buildFromArray([[dateAsString]], { timeFormats: ['hh:mm:ss.ssss'] })
+      expect(engine.getCellValue(adr('A1'))).toEqual(dateAsNumber)
+
+      engine = HyperFormula.buildFromArray([[dateAsString]], { timeFormats: ['hh:mm:ss.sssss'] })
+      expect(engine.getCellValue(adr('A1'))).toEqual(dateAsNumber)
+    })
+  })
+
+  describe('deprecated option warning messages', () => {
+    beforeEach(() => {
+      spyOn(console, 'warn')
+    })
+
+    afterEach(() => {
+      try {
+        // eslint-disable-next-line
+        // @ts-ignore
+        console.warn.mockClear() // clears mock in Jest env
+      } catch {
+        // eslint-disable-next-line
+        // @ts-ignore
+        console.warn.calls.reset() // clears mock in Jasmine env
+      }
+    })
+
+    it('should log usage of deprecated options when they are passed while engine initialization', () => {
+      new Config({
+        binarySearchThreshold: 20,
+      })
+
+      expect(console.warn).toHaveBeenCalledWith('binarySearchThreshold option is deprecated since 1.1')
+      expect(console.warn).toHaveBeenCalledTimes(1)
+    })
+
+    it('should log usage of deprecated options when they are passed while merging the Config object', () => {
+      const config = new Config()
+
+      config.mergeConfig({
+        binarySearchThreshold: 20
+      })
+
+      expect(console.warn).toHaveBeenCalledTimes(1)
+      expect(console.warn).toHaveBeenCalledWith('binarySearchThreshold option is deprecated since 1.1')
+    })
+
+    it('should not log usage of deprecated options when they are not passed while merging the Config object', () => {
+      const config = new Config({
+        binarySearchThreshold: 20,
+      })
+
+      try {
+        // eslint-disable-next-line
+        // @ts-ignore
+        console.warn.mockClear() // clears mock in Jest env
+      } catch {
+        // eslint-disable-next-line
+        // @ts-ignore
+        console.warn.calls.reset() // clears mock in Jasmine env
+      }
+
+      config.mergeConfig({})
+
+      expect(console.warn).toHaveBeenCalledTimes(0)
+    })
   })
 })
 

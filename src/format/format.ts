@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {Config} from '../Config'
@@ -16,7 +16,7 @@ export function format(value: number, formatArg: string, config: Config, dateHel
     return tryDateTime
   }
   const tryDuration = config.stringifyDuration(numberToSimpleTime(value), formatArg)
-  if(tryDuration !== undefined) {
+  if (tryDuration !== undefined) {
     return tryDuration
   }
   const expression = parseForNumberFormat(formatArg)
@@ -94,22 +94,16 @@ export function defaultStringifyDuration(time: SimpleTime, formatArg: string): M
       continue
     }
 
-    if(secondsExtendedRegexp.test(token.value)) {
-      const fractionOfSecondPrecision = token.value.length-3
-      result += (time.seconds < 10 ? '0' : '') + Math.round(time.seconds * Math.pow(10, fractionOfSecondPrecision))/Math.pow(10, fractionOfSecondPrecision)
-      continue
-    }
-
     switch (token.value.toLowerCase()) {
       case 'h':
       case 'hh': {
-        result += padLeft( time.hours, token.value.length)
+        result += padLeft(time.hours, token.value.length)
         time.hours = 0
         break
       }
 
       case '[hh]': {
-        result += padLeft( time.hours, token.value.length-2)
+        result += padLeft(time.hours, token.value.length - 2)
         time.hours = 0
         break
       }
@@ -122,7 +116,7 @@ export function defaultStringifyDuration(time: SimpleTime, formatArg: string): M
       }
 
       case '[mm]': {
-        result += padLeft(time.minutes + 60*time.hours, token.value.length-2)
+        result += padLeft(time.minutes + 60 * time.hours, token.value.length - 2)
         time.minutes = 0
         time.hours = 0
         break
@@ -131,11 +125,16 @@ export function defaultStringifyDuration(time: SimpleTime, formatArg: string): M
       /* seconds */
       case 's':
       case 'ss': {
-        result += padLeft(time.seconds, token.value.length)
+        result += padLeft(Math.floor(time.seconds), token.value.length)
         break
       }
 
       default: {
+        if (secondsExtendedRegexp.test(token.value)) {
+          const fractionOfSecondPrecision = Math.max(token.value.length - 3, 0)
+          result += (time.seconds < 10 ? '0' : '') + Math.floor(time.seconds * Math.pow(10, fractionOfSecondPrecision)) / Math.pow(10, fractionOfSecondPrecision)
+          continue
+        }
         return undefined
       }
     }
@@ -152,29 +151,22 @@ export function defaultStringifyDateTime(dateTime: SimpleDateTime, formatArg: st
   let result = ''
   let minutes: boolean = false
 
-  const ampm = tokens.some( (token) => token.type === TokenType.FORMAT &&
-    (token.value === 'a/p' || token.value === 'A/P' || token.value === 'am/pm' || token.value === 'AM/PM') )
+  const ampm = tokens.some((token) => token.type === TokenType.FORMAT &&
+    (token.value === 'a/p' || token.value === 'A/P' || token.value === 'am/pm' || token.value === 'AM/PM'))
 
-  for (let i=0; i<tokens.length; i++){
+  for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i]
     if (token.type === TokenType.FREE_TEXT) {
       result += token.value
       continue
     }
 
-    if(secondsExtendedRegexp.test(token.value)) {
-      const fractionOfSecondPrecision = token.value.length-3
-      result += (dateTime.seconds < 10 ? '0' : '') + Math.round(dateTime.seconds * Math.pow(10, fractionOfSecondPrecision))/Math.pow(10, fractionOfSecondPrecision)
-      continue
-    }
-
-
     switch (token.value.toLowerCase()) {
       /* hours*/
       case 'h':
       case 'hh': {
         minutes = true
-        result += padLeft( ampm? (dateTime.hours+11)%12+1 : dateTime.hours, token.value.length)
+        result += padLeft(ampm ? (dateTime.hours + 11) % 12 + 1 : dateTime.hours, token.value.length)
         break
       }
 
@@ -188,14 +180,14 @@ export function defaultStringifyDateTime(dateTime: SimpleDateTime, formatArg: st
       /* seconds */
       case 's':
       case 'ss': {
-        result += padLeft(Math.round(dateTime.seconds), token.value.length)
+        result += padLeft(Math.floor(dateTime.seconds), token.value.length)
         break
       }
 
       /* minutes / months */
       case 'm':
       case 'mm': {
-        if(i+1 < tokens.length && tokens[i+1].value.startsWith(':')) {
+        if (i + 1 < tokens.length && tokens[i + 1].value.startsWith(':')) {
           minutes = true
         }
         if (minutes) {
@@ -220,11 +212,16 @@ export function defaultStringifyDateTime(dateTime: SimpleDateTime, formatArg: st
       /* AM / PM */
       case 'am/pm':
       case 'a/p': {
-       const [am, pm] = token.value.split('/')
-       result += dateTime.hours < 12 ? am : pm
-       break
+        const [am, pm] = token.value.split('/')
+        result += dateTime.hours < 12 ? am : pm
+        break
       }
       default: {
+        if (secondsExtendedRegexp.test(token.value)) {
+          const fractionOfSecondPrecision = token.value.length - 3
+          result += (dateTime.seconds < 10 ? '0' : '') + Math.floor(dateTime.seconds * Math.pow(10, fractionOfSecondPrecision)) / Math.pow(10, fractionOfSecondPrecision)
+          continue
+        }
         return undefined
       }
     }

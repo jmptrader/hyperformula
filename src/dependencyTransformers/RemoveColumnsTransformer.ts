@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {absoluteSheetReference, ErrorType, SimpleCellAddress} from '../Cell'
@@ -19,12 +19,12 @@ export class RemoveColumnsTransformer extends Transformer {
     super()
   }
 
-  public isIrreversible() {
-    return true
-  }
-
   public get sheet(): number {
     return this.columnsSpan.sheet
+  }
+
+  public isIrreversible() {
+    return true
   }
 
   protected transformRowRangeAst(ast: RowRangeAst, _formulaAddress: SimpleCellAddress): Ast {

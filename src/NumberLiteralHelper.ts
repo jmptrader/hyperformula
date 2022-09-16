@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {Config} from './Config'
@@ -21,13 +21,14 @@ export class NumberLiteralHelper {
   }
 
   public numericStringToMaybeNumber(input: string): Maybe<number> {
-    if(this.numberPattern.test(input)) {
+    if (this.numberPattern.test(input)) {
       const num = this.numericStringToNumber(input)
-      if(isNaN(num)) {
+      if (isNaN(num)) {
         return undefined
       }
-    return num
+      return num
     }
+
     return undefined
   }
 

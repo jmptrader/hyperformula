@@ -175,7 +175,7 @@ describe('swapping rows working with redo', () => {
 })
 
 function fillValues(order: number[], fill: number): number[] {
-  while(order.length < fill) {
+  while (order.length < fill) {
     const x = order.length
     order[x] = x
   }
@@ -261,6 +261,24 @@ describe('reorder base case', () => {
     expect(engine.getSheetSerialized(0)).toEqual([[7, 8, 9], [1, 2, 3], [4, 5, 6]])
   })
 
+  it('should update the addressing in cells being sorted', () => {
+    const engine = HyperFormula.buildFromArray([[1, 2, '=A1+B1'], [4, 5, '=A2+B2'], [7, 8, '=A3+B3']])
+    expect(engine.getSheetValues(0)).toEqual([[1, 2, 3], [4, 5, 9], [7, 8, 15]])
+    expect(engine.isItPossibleToSetRowOrder(0, [1, 2, 0])).toEqual(true)
+    engine.setRowOrder(0, [1, 2, 0])
+    expect(engine.getSheetSerialized(0)).toEqual([[7, 8, '=A1+B1'], [1, 2, '=A2+B2'], [4, 5, '=A3+B3']])
+    expect(engine.getSheetValues(0)).toEqual([[7, 8, 15], [1, 2, 3], [4, 5, 9]])
+  })
+
+  it('should not change the constants in formulas when updating addresses', () => {
+    const engine = HyperFormula.buildFromArray([[1, 2, '=1+A1'], [4, 5, '=2+A2'], [7, 8, '=3+A3']])
+    expect(engine.getSheetValues(0)).toEqual([[1, 2, 2], [4, 5, 6], [7, 8, 10]])
+    expect(engine.isItPossibleToSetRowOrder(0, [1, 2, 0])).toEqual(true)
+    engine.setRowOrder(0, [1, 2, 0])
+    expect(engine.getSheetSerialized(0)).toEqual([[7, 8, '=3+A1'], [1, 2, '=1+A2'], [4, 5, '=2+A3']])
+    expect(engine.getSheetValues(0)).toEqual([[7, 8, 10], [1, 2, 2], [4, 5, 6]])
+  })
+
   it('should not move values unnecessarily', () => {
     const engine = HyperFormula.buildFromArray([[1, 2, 3], [4, 5, 6]])
     expect(engine.isItPossibleToSetRowOrder(0, [0, 1])).toEqual(true)
@@ -330,7 +348,7 @@ describe('reorder working with redo', () => {
     const engine = HyperFormula.buildFromArray([['=A2', '=SUM(B2:B3)', 3], ['=A10', '=SUM(B10:B15)', 6], ['=SUM(C1:C10)', 8, 9]])
     engine.setRowOrder(0, fillValues([1, 2, 0], 15))
     engine.undo()
-    expect(engine.isItPossibleToSetRowOrder(0, fillValues( [1, 2, 0], 16))).toEqual(true)
+    expect(engine.isItPossibleToSetRowOrder(0, fillValues([1, 2, 0], 16))).toEqual(true)
     engine.redo()
     expect(engine.getSheetSerialized(0)).toEqual([['=SUM(#REF!)', 8, 9], ['=A3', '=SUM(B3:B4)', 3], ['=A11', '=SUM(B11:B16)', 6]])
   })

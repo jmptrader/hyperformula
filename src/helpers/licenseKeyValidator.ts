@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2021 Handsoncode. All rights reserved.
+ * Copyright (c) 2022 Handsoncode. All rights reserved.
  */
 
 import {checkKeySchema, extractTime} from './licenseKeyHelper'
@@ -35,7 +35,7 @@ type MessageDescriptor = {
  */
 const consoleMessages: ConsoleMessages = {
   invalid: () => 'The license key for HyperFormula is invalid.',
-  expired: ({ keyValidityDate }) => 'The license key for HyperFormula expired' +
+  expired: ({keyValidityDate}) => 'The license key for HyperFormula expired' +
     ` on ${keyValidityDate}, and is not valid for the installed version.`,
   missing: () => 'The license key for HyperFormula is missing.',
 }
