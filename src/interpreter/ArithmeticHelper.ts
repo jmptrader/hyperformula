@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2022 Handsoncode. All rights reserved.
+ * Copyright (c) 2023 Handsoncode. All rights reserved.
  */
 
 import unorm from 'unorm'
@@ -33,7 +33,7 @@ import {
   RawScalarValue,
   TimeNumber
 } from './InterpreterValue'
-import {SimpleRangeValue} from './SimpleRangeValue'
+import {SimpleRangeValue} from '../SimpleRangeValue'
 import Collator = Intl.Collator
 
 export type complex = [number, number]

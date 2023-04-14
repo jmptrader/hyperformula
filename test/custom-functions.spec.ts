@@ -1,14 +1,19 @@
-import {FunctionPluginValidationError, HyperFormula, SimpleRangeValue} from '../src'
-import {ArraySize} from '../src/ArraySize'
-import {ErrorType} from '../src/Cell'
+import {
+  CellError,
+  ErrorType,
+  FunctionArgumentType,
+  FunctionPluginValidationError,
+  HyperFormula,
+  SimpleRangeValue,
+  ArraySize,
+} from '../src'
 import {ErrorMessage} from '../src/error-message'
 import {AliasAlreadyExisting, ProtectedFunctionError, ProtectedFunctionTranslationError} from '../src/errors'
 import {plPL} from '../src/i18n/languages'
 import {InterpreterState} from '../src/interpreter/InterpreterState'
 import {InternalScalarValue} from '../src/interpreter/InterpreterValue'
 import {FunctionPlugin, FunctionPluginTypecheck} from '../src/interpreter/plugin/FunctionPlugin'
-import {NumericAggregationPlugin} from '../src/interpreter/plugin/NumericAggregationPlugin'
-import {ConditionalAggregationPlugin} from '../src/interpreter/plugin/ConditionalAggregationPlugin'
+import {ConditionalAggregationPlugin, NumericAggregationPlugin} from '../src/interpreter/plugin'
 import {VersionPlugin} from '../src/interpreter/plugin/VersionPlugin'
 import {ProcedureAst} from '../src/parser'
 import {adr, detailedError, expectArrayWithSameContent} from './testUtils'
@@ -24,6 +29,7 @@ class FooPlugin extends FunctionPlugin implements FunctionPluginTypecheck<FooPlu
     'ARRAYFOO': {
       method: 'arrayfoo',
       arraySizeMethod: 'arraysizeFoo',
+      parameters: [{ argumentType: FunctionArgumentType.NUMBER }],
     },
   }
 
@@ -126,6 +132,93 @@ class ReservedNamePlugin extends FunctionPlugin implements FunctionPluginTypeche
   }
 }
 
+class SquarePlugin extends FunctionPlugin implements FunctionPluginTypecheck<SquarePlugin> {
+  public static implementedFunctions = {
+    // Key of the mapping describes which function will be used to compute it
+    'SQUARE': {
+      method: 'square',
+    },
+  }
+
+  public square(ast: ProcedureAst, state: InterpreterState): InternalScalarValue {
+    // Take ast of first argument from list of arguments
+    const arg = ast.args[0]
+
+    // If there was no argument, return NA error
+    if (!arg) {
+      return new CellError(ErrorType.NA)
+    }
+
+    // Compute value of argument
+    const argValue = this.evaluateAst(arg, state)
+
+    if (argValue instanceof CellError) {
+      // If the value is some error, return that error
+      return argValue
+    } else if (typeof argValue === 'number') {
+      // If it's a number, compute the result
+      return (argValue * argValue)
+    } else {
+      // If it's some other type which doesn't make sense in terms of square (string, boolean), return VALUE error
+      return new CellError(ErrorType.VALUE)
+    }
+  }
+}
+
+class GreetingsPlugin extends FunctionPlugin {
+  public static implementedFunctions = {
+    GREET: {
+      method: 'greet',
+      parameters: [
+        { argumentType: FunctionArgumentType.STRING }
+      ],
+    },
+    EXAMPLE_ARRAY_FUNCTION: {
+      method: 'exampleArrayFunction',
+      parameters: [
+        { argumentType: FunctionArgumentType.NUMBER }
+      ],
+    }
+  }
+
+  public static translations = {
+    enGB: {
+      GREET: 'GREET',
+      EXAMPLE_ARRAY_FUNCTION: 'EXAMPLE_ARRAY_FUNCTION',
+    },
+    enUS: {
+      GREET: 'GREET',
+      EXAMPLE_ARRAY_FUNCTION: 'EXAMPLE_ARRAY_FUNCTION',
+    }
+  }
+  
+  greet(ast: ProcedureAst, state: InterpreterState) {
+    return this.runFunction(
+      ast.args,
+      state,
+      this.metadata('GREET'),
+      (username) => {
+        if (!username) {
+          return new CellError(ErrorType.VALUE)
+        }
+
+        return `👋 Hello, ${username}!`
+      },
+    )
+  }
+
+  exampleArrayFunction(ast: ProcedureAst, state: InterpreterState) {
+    return this.runFunction(
+      ast.args,
+      state,
+      this.metadata('EXAMPLE_ARRAY_FUNCTION'),
+      (val: number) => {
+        return SimpleRangeValue.onlyValues([[val, val], [val, val]])
+      },
+    )
+  }
+}
+
 describe('Register static custom plugin', () => {
   it('should register plugin with translations', () => {
     HyperFormula.registerLanguage('plPL', plPL)
@@ -196,7 +289,7 @@ describe('Register static custom plugin', () => {
   it('should register single array functions', () => {
     HyperFormula.registerFunction('ARRAYFOO', FooPlugin, FooPlugin.translations)
     const engine = HyperFormula.buildFromArray([
-      ['=ARRAYFOO()']
+      ['=ARRAYFOO(0)']
     ])
 
     expect(engine.getSheetValues(0)).toEqual([[1, 1], [1, 1]])
@@ -391,5 +484,71 @@ describe('aliases', () => {
     expect(() => {
       HyperFormula.registerFunctionPlugin(OverloadedAliasPlugin)
     }).toThrow(new AliasAlreadyExisting('FOO', 'OverloadedAliasPlugin'))
+  })
+})
+
+describe('Argument validation implemented by hand (without call to runFunction)', () => {
+  it('works', () => {
+    HyperFormula.registerFunctionPlugin(SquarePlugin)
+    HyperFormula.getLanguage('enGB').extendFunctions({SQUARE: 'SQUARE'})
+
+    const engine = HyperFormula.buildFromArray([
+      ['=SQUARE(2)'],
+      ['=SQUARE()'],
+      ['=SQUARE(TRUE())'],
+      ['=SQUARE(1/0)'],
+    ])
+
+    expect(engine.getCellValue(adr('A1'))).toEqual(4)
+    expect(engine.getCellValue(adr('A2'))).toEqualError(detailedError(ErrorType.NA))
+    expect(engine.getCellValue(adr('A3'))).toEqualError(detailedError(ErrorType.VALUE))
+    expect(engine.getCellValue(adr('A4'))).toEqualError(detailedError(ErrorType.DIV_BY_ZERO))
+  })
+})
+
+describe('Custom function implemented with runFunction)', () => {
+  it('works for a non-empty string', () => {
+    HyperFormula.registerFunctionPlugin(GreetingsPlugin, GreetingsPlugin.translations)
+
+    const engine = HyperFormula.buildFromArray([['Anthony', '=GREET(A1)']])
+
+    expect(engine.getCellValue(adr('B1'))).toEqual('👋 Hello, Anthony!')
+  })
+
+  it('returns #VALUE! error for empty string', () => {
+    HyperFormula.registerFunctionPlugin(GreetingsPlugin, GreetingsPlugin.translations)
+
+    const engine = HyperFormula.buildFromArray([['', '=GREET(A1)']])
+
+    expect(engine.getCellValue(adr('B1'))).toEqualError(detailedError(ErrorType.VALUE))
+  })
+
+  it('propagates #DIV_BY_ZERO! error', () => {
+    HyperFormula.registerFunctionPlugin(GreetingsPlugin, GreetingsPlugin.translations)
+
+    const engine = HyperFormula.buildFromArray([['=1/0', '=GREET(A1)']])
+
+    expect(engine.getCellValue(adr('B1'))).toEqualError(detailedError(ErrorType.DIV_BY_ZERO))
+  })
+
+  it('propagates #CYCLE! error', () => {
+    HyperFormula.registerFunctionPlugin(GreetingsPlugin, GreetingsPlugin.translations)
+
+    const engine = HyperFormula.buildFromArray([['=B1', '=GREET(A1)']])
+
+    expect(engine.getCellValue(adr('B1'))).toEqualError(detailedError(ErrorType.CYCLE))
+  })
+
+  it('function returning array throws error when user tries to vectorize it', () => {
+    HyperFormula.registerFunctionPlugin(GreetingsPlugin, GreetingsPlugin.translations)
+
+    expect(() => {
+      const engine = HyperFormula.buildFromArray([
+        [1, 2, 3],
+        ['=EXAMPLE_ARRAY_FUNCTION(A1:C1)'],
+      ], {useArrayArithmetic: true})
+
+      engine.getCellValue(adr('A2'))
+    }).toThrow(new Error('Function returning array cannot be vectorized.'))
   })
 })

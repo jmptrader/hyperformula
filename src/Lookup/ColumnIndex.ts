@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2022 Handsoncode. All rights reserved.
+ * Copyright (c) 2023 Handsoncode. All rights reserved.
  */
 
 import {CellError, movedSimpleCellAddress, SimpleCellAddress} from '../Cell'
@@ -18,7 +18,7 @@ import {
   RawNoErrorScalarValue,
   RawScalarValue
 } from '../interpreter/InterpreterValue'
-import {SimpleRangeValue} from '../interpreter/SimpleRangeValue'
+import {SimpleRangeValue} from '../SimpleRangeValue'
 import {LazilyTransformingAstService} from '../LazilyTransformingAstService'
 import {ColumnsSpan, RowsSpan} from '../Span'
 import {Statistics, StatType} from '../statistics'

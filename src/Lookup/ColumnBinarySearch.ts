@@ -1,13 +1,13 @@
 /**
  * @license
- * Copyright (c) 2022 Handsoncode. All rights reserved.
+ * Copyright (c) 2023 Handsoncode. All rights reserved.
  */
 
 import {SimpleCellAddress} from '../Cell'
 import {CellValueChange} from '../ContentChanges'
 import {DependencyGraph} from '../DependencyGraph'
 import {RawNoErrorScalarValue, RawScalarValue} from '../interpreter/InterpreterValue'
-import {SimpleRangeValue} from '../interpreter/SimpleRangeValue'
+import {SimpleRangeValue} from '../SimpleRangeValue'
 import {ColumnsSpan} from '../Span'
 import {AdvancedFind} from './AdvancedFind'
 import {ColumnSearchStrategy, SearchOptions} from './SearchStrategy'

@@ -1,21 +1,21 @@
 /**
  * @license
- * Copyright (c) 2022 Handsoncode. All rights reserved.
+ * Copyright (c) 2023 Handsoncode. All rights reserved.
  */
 
 import {CellError, ErrorType} from '../../Cell'
 import {ProcedureAst} from '../../parser'
 import {InterpreterState} from '../InterpreterState'
 import {InterpreterValue} from '../InterpreterValue'
-import {ArgumentTypes, FunctionPlugin, FunctionPluginTypecheck} from './FunctionPlugin'
+import {FunctionArgumentType, FunctionPlugin, FunctionPluginTypecheck} from './FunctionPlugin'
 
 export class ModuloPlugin extends FunctionPlugin implements FunctionPluginTypecheck<ModuloPlugin> {
   public static implementedFunctions = {
     'MOD': {
       method: 'mod',
       parameters: [
-        {argumentType: ArgumentTypes.NUMBER},
-        {argumentType: ArgumentTypes.NUMBER},
+        {argumentType: FunctionArgumentType.NUMBER},
+        {argumentType: FunctionArgumentType.NUMBER},
       ],
     },
   }
