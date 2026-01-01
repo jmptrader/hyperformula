@@ -1,10 +1,10 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
 import {EmptyCellVertex, ParsingErrorVertex, RangeVertex, ValueCellVertex} from './'
-import {FormulaVertex} from './FormulaCellVertex'
+import {FormulaVertex} from './FormulaVertex'
 
 /**
  * Represents vertex which keeps values of one or more cells

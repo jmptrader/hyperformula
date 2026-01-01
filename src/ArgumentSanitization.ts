@@ -1,15 +1,16 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
-import {Config, ConfigParamsList} from './Config'
+import {Config} from './Config'
 import {
   ConfigValueTooBigError,
   ConfigValueTooSmallError,
   ExpectedOneOfValuesError,
   ExpectedValueOfTypeError
 } from './errors'
+import {ConfigParamsList} from './ConfigParams'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function configValueFromParam(inputValue: any, expectedType: string | string[], paramName: ConfigParamsList) {

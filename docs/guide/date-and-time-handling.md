@@ -5,6 +5,8 @@ The formats for the default date and time parsing functions can be set using con
 - [`timeFormats`](../api/interfaces/configparams.md#timeformats),
 - [`nullYear`](../api/interfaces/configparams.md#nullyear).
 
+The API reference of [`dateFormats`](../api/interfaces/configparams.md#dateformats) and [`timeFormats`](../api/interfaces/configparams.md#timeformats) describes the supported date and time formats in detail.
+
 ## Example
 
 By default, HyperFormula uses the European date and time formats.
@@ -23,9 +25,7 @@ timeFormats: ['hh:mm', 'hh:mm:ss.sss'], // set by default
 
 ## Custom date and time handling
 
-HyperFormula offers the possibility to extend the number of supported
-date/time formats as well as the behavior of this functionality by exposing
-three options:
+If date and time formats supported by the [`dateFormats`](../api/interfaces/configparams.md#dateformats) and [`timeFormats`](../api/interfaces/configparams.md#timeformats) parameters are not enough, you can extend them by providing the following options:
 
 - [`parseDateTime`](../api/interfaces/configparams.md#parsedatetime), which allows to provide a function that accepts
 a string representing date/time and parses it into an actual date/time format
@@ -98,10 +98,14 @@ And now, HyperFormula recognizes these values as valid dates and can operate on 
 
 ## Demo
 
-<iframe
-  src="https://codesandbox.io/embed/github/handsontable/hyperformula-demos/tree/2.6.x/date-time?autoresize=1&fontsize=11&hidenavigation=1&theme=light&view=preview"
-  style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;"
-  title="handsontable/hyperformula-demos: date-time"
-  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
-  sandbox="allow-autoplay allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts">
-</iframe>
+::: example #example1 --html 1 --css 2 --js 3 --ts 4
+
+@[code](@/docs/examples/date-time/example1.html)
+
+@[code](@/docs/examples/date-time/example1.css)
+
+@[code](@/docs/examples/date-time/example1.js)
+
+@[code](@/docs/examples/date-time/example1.ts)
+
+:::

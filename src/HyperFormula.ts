@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
 import {AbsoluteCellRange, isSimpleCellRange, SimpleCellRange} from './AbsoluteCellRange'
@@ -19,7 +19,7 @@ import {
 } from './Cell'
 import {CellContent, CellContentParser, RawCellContent} from './CellContentParser'
 import {CellValue} from './CellValue'
-import {Config, ConfigParams, getDefaultConfig} from './Config'
+import {Config, getDefaultConfig} from './Config'
 import {ColumnRowIndex, CrudOperations} from './CrudOperations'
 import {DateTime, numberToSimpleTime} from './DateTimeHelper'
 import {
@@ -53,7 +53,7 @@ import {NamedExpression, NamedExpressionOptions, NamedExpressions} from './Named
 import {normalizeAddedIndexes, normalizeRemovedIndexes} from './Operations'
 import {
   Ast,
-  AstNodeType,
+  NamedExpressionDependency,
   ParserWithCaching,
   RelativeDependency,
   simpleCellAddressFromString,
@@ -65,10 +65,11 @@ import {
 import {Serialization, SerializedNamedExpression} from './Serialization'
 import {Sheet, SheetDimensions, Sheets} from './Sheet'
 import {Statistics, StatType} from './statistics'
+import {ConfigParams} from './ConfigParams'
 
 /**
  * This is a class for creating HyperFormula instance, all the following public methods
- * ale related to this class.
+ * are related to this class.
  *
  * The instance can be created only by calling one of the static methods
  * `buildFromArray`, `buildFromSheets` or `buildEmpty` and should be disposed of with the
@@ -107,7 +108,9 @@ export class HyperFormula implements TypedEmitter {
   public static releaseDate = process.env.HT_RELEASE_DATE as string
 
   /**
-   * Contains all available languages to use in registerLanguage.
+   * When using the UMD build, this property contains all available languages to use with the [registerLanguage](#registerlanguage) method.
+   *
+   * For more information, see the [Localizing functions](/guide/localizing-functions.md) guide.
    *
    * @category Static Properties
    */
@@ -140,7 +143,7 @@ export class HyperFormula implements TypedEmitter {
   }
 
   /**
-   * Returns all of HyperFormula's default [configuration options](../../guide/configuration-options.md).
+   * Returns all of HyperFormula's default [configuration options](/guide/configuration-options.md).
    *
    * @example
    * ```js
@@ -253,11 +256,18 @@ export class HyperFormula implements TypedEmitter {
    * const sheetData = [
    *  ['0', '=SUM(1, 2, 3)', '52'],
    *  ['=SUM(A1:C1)', '', '=A1'],
-   *  ['2', '=SUM(A1:C1)', '91'],
+   *  ['2', '=SUM(A1:C1)', '=theUltimateQuestionOfLife'],
+   * ];
+   *
+   * const namedExpressions = [
+   *  {
+   *    name: 'theUltimateQuestionOfLife',
+   *    expression: '=42',
+   *  },
    * ];
    *
    * // method with optional config parameter maxColumns
-   * const hfInstance = HyperFormula.buildFromArray(sheetData, { maxColumns: 1000 });
+   * const hfInstance = HyperFormula.buildFromArray(sheetData, { maxColumns: 1000 }, namedExpressions);
    * ```
    *
    * @category Factories
@@ -292,12 +302,19 @@ export class HyperFormula implements TypedEmitter {
    *  'Sheet2': [
    *    ['', '4', '=Sheet1!$B1'],
    *    ['', '8', '=SUM(9, 3, 3)'],
-   *    ['=Sheet1!$B1', '2', ''],
+   *    ['=Sheet1!$B1', '2', '=theUltimateQuestionOfLife'],
    *   ],
    * };
    *
+   * const namedExpressions = [
+   *  {
+   *    name: 'theUltimateQuestionOfLife',
+   *    expression: '=42',
+   *  },
+   * ];
+   *
    * // method with optional config parameter useColumnIndex
-   * const hfInstance = HyperFormula.buildFromSheets(sheetData, { useColumnIndex: true });
+   * const hfInstance = HyperFormula.buildFromSheets(sheetData, { useColumnIndex: true }, namedExpressions);
    * ```
    *
    * @category Factories
@@ -316,8 +333,15 @@ export class HyperFormula implements TypedEmitter {
    *
    * @example
    * ```js
+   * const namedExpressions = [
+   *  {
+   *    name: 'theUltimateQuestionOfLife',
+   *    expression: '=42',
+   *  },
+   * ];
+   *
    * // build with no initial data and with optional config parameter maxColumns
-   * const hfInstance = HyperFormula.buildEmpty({ maxColumns: 1000 });
+   * const hfInstance = HyperFormula.buildEmpty({ maxColumns: 1000 }, namedExpressions);
    * ```
    *
    * @category Factories
@@ -328,6 +352,8 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Returns registered language from its code string.
+   *
+   * For more information, see the [Localizing functions guide](/guide/localizing-functions.md).
    *
    * @param {string} languageCode - code string of the translation package
    *
@@ -385,6 +411,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Unregisters language that is registered under given code string.
    *
+   * For more information, see the [Localizing functions guide](/guide/localizing-functions.md).
+   *
    * @param {string} languageCode - code string of the translation package
    *
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type argument is of wrong type
@@ -428,6 +456,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Registers all functions in a given plugin with optional translations.
    *
+   * For more information, see the [Custom functions guide](/guide/custom-functions.md).
+   *
    * Note: FunctionPlugins must be registered prior to the creation of HyperFormula instances in which they are used.
    * HyperFormula instances created prior to the registration of a FunctionPlugin are unable to access the FunctionPlugin.
    * Registering a FunctionPlugin with [[custom-functions]] requires the translations parameter.
@@ -456,6 +486,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Unregisters all functions defined in given plugin.
    *
+   * For more information, see the [Custom functions guide](/guide/custom-functions.md).
+   *
    * Note: This method does not affect the existing HyperFormula instances.
    *
    * @param {FunctionPluginDefinition} plugin - plugin class
@@ -478,9 +510,11 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Registers a function with a given id if such exists in a plugin.
    *
+   * For more information, see the [Custom functions guide](/guide/custom-functions.md).
+   *
    * Note: This method does not affect the existing HyperFormula instances.
    *
-   * @param {string} functionId - function id, e.g. 'SUMIF'
+   * @param {string} functionId - function id, e.g., 'SUMIF'
    * @param {FunctionPluginDefinition} plugin - plugin class
    * @param {FunctionTranslationsPackage} translations - translations for the function name
    *
@@ -507,9 +541,11 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Unregisters a function with a given id.
    *
+   * For more information, see the [Custom functions guide](/guide/custom-functions.md).
+   *
    * Note: This method does not affect the existing HyperFormula instances.
    *
-   * @param {string} functionId - function id, e.g. 'SUMIF'
+   * @param {string} functionId - function id, e.g., 'SUMIF'
    *
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type argument is of wrong type
    *
@@ -573,7 +609,9 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Returns class of a plugin used by function with given id
    *
-   * @param {string} functionId - id of a function, e.g. 'SUMIF'
+   * For more information, see the [Custom functions guide](/guide/custom-functions.md).
+   *
+   * @param {string} functionId - id of a function, e.g., 'SUMIF'
    *
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type argument is of wrong type
    *
@@ -611,6 +649,9 @@ export class HyperFormula implements TypedEmitter {
     return FunctionRegistry.getPlugins()
   }
 
+  /**
+   * @internal
+   */
   private static buildFromEngineState(engine: EngineState): HyperFormula {
     return new HyperFormula(
       engine.config,
@@ -884,6 +925,8 @@ export class HyperFormula implements TypedEmitter {
    * Returns dimensions of a specified sheet.
    * The sheet dimensions is represented with numbers: width and height.
    *
+   * Note: Due to the memory optimizations, some of the empty bottom rows and rightmost columns are not counted to the dimensions.
+   *
    * @param {number} sheetId - sheet ID number
    *
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type argument is of wrong type
@@ -974,10 +1017,12 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Updates the config with given new metadata. It is an expensive operation, as it might trigger rebuilding the engine and recalculation of all formulas.
    *
+   * For more information, see the [Configuration options guide](/guide/configuration-options.md).
+   *
    * @param {Partial<ConfigParams>} newParams configuration options to be updated or added
    *
-   * @throws [[ExpectedValueOfTypeError]] when some parameters of config are of wrong type (e.g. currencySymbol)
-   * @throws [[ConfigValueEmpty]] when some parameters of config are of invalid value (e.g. currencySymbol)
+   * @throws [[ExpectedValueOfTypeError]] when some parameters of config are of wrong type (e.g., currencySymbol)
+   * @throws [[ConfigValueEmpty]] when some parameters of config are of invalid value (e.g., currencySymbol)
    *
    * @example
    * ```js
@@ -1004,6 +1049,8 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Returns current configuration of the engine instance.
+   *
+   * For more information, see the [Configuration options guide](/guide/configuration-options.md).
    *
    * @example
    * ```js
@@ -1046,6 +1093,10 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Undo the previous operation.
    *
+   * For more information, see the [Undo-Redo guide](/guide/undo-redo.md).
+   *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note that this method may trigger dependency graph recalculation.
    *
    * @fires [[valuesUpdated]] if recalculation was triggered by this change
@@ -1075,6 +1126,10 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Re-do recently undone operation.
+   *
+   * For more information, see the [Undo-Redo guide](/guide/undo-redo.md).
+   *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
    *
    * Note that this method may trigger dependency graph recalculation.
    *
@@ -1110,6 +1165,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Checks if there is at least one operation that can be undone.
    *
+   * For more information, see the [Undo-Redo guide](/guide/undo-redo.md).
+   *
    * @example
    * ```js
    * const hfInstance = HyperFormula.buildFromArray([
@@ -1134,6 +1191,8 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Checks if there is at least one operation that can be re-done.
+   *
+   * For more information, see the [Undo-Redo guide](/guide/undo-redo.md).
    *
    * @example
    * ```js
@@ -1200,6 +1259,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Sets the content for a block of cells of a given coordinates.
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note that this method may trigger dependency graph recalculation.
    *
    * @param {SimpleCellAddress} topLeftCornerAddress - top left corner of block of cells
@@ -1235,6 +1296,8 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Reorders rows of a sheet according to a source-target mapping.
+   *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
    *
    * Note that this method may trigger dependency graph recalculation.
    *
@@ -1325,10 +1388,12 @@ export class HyperFormula implements TypedEmitter {
    * Parameter `newRowOrder` should have a form `[ newPositionForRow0, newPositionForRow1, newPositionForRow2, ... ]`.
    * This method might be used to [sort the rows of a sheet](../../guide/sorting-data.md).
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note: This method may trigger dependency graph recalculation.
    *
    * @param {number} sheetId - ID of a sheet to operate on
-   * @param {number[]} newRowOrder - permutation of rows
+   * @param {number[]} newRowOrder - permutation of rows; array length must match the number of rows returned by [getSheetDimensions()](#getsheetdimensions)
    *
    * @fires [[valuesUpdated]] if recalculation was triggered by this change
    *
@@ -1400,6 +1465,8 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Reorders columns of a sheet according to a source-target mapping.
+   *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
    *
    * Note that this method may trigger dependency graph recalculation.
    *
@@ -1486,10 +1553,12 @@ export class HyperFormula implements TypedEmitter {
    * Parameter `newColumnOrder` should have a form `[ newPositionForColumn0, newPositionForColumn1, newPositionForColumn2, ... ]`.
    * This method might be used to [sort the columns of a sheet](../../guide/sorting-data.md).
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note: This method may trigger dependency graph recalculation.
    *
    * @param {number} sheetId - ID of a sheet to operate on
-   * @param {number[]} newColumnOrder - permutation of columns
+   * @param {number[]} newColumnOrder - permutation of columns; array length must match the number of columns returned by [getSheetDimensions()](#getsheetdimensions)
    *
    * @fires [[valuesUpdated]] if recalculation was triggered by this change
    *
@@ -1594,6 +1663,8 @@ export class HyperFormula implements TypedEmitter {
    * Adds multiple rows into a specified position in a given sheet.
    * Does nothing if rows are outside effective sheet size.
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note that this method may trigger dependency graph recalculation.
    *
    * @param {number} sheetId - sheet ID in which rows will be added
@@ -1665,6 +1736,8 @@ export class HyperFormula implements TypedEmitter {
    * Removes multiple rows from a specified position in a given sheet.
    * Does nothing if rows are outside the effective sheet size.
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note that this method may trigger dependency graph recalculation.
    *
    * @param {number} sheetId - sheet ID from which rows will be removed
@@ -1733,6 +1806,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Adds multiple columns into a specified position in a given sheet.
    * Does nothing if the columns are outside the effective sheet size.
+   *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
    *
    * Note that this method may trigger dependency graph recalculation.
    *
@@ -1807,6 +1882,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Removes multiple columns from a specified position in a given sheet.
    * Does nothing if columns are outside the effective sheet size.
+   *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
    *
    * Note that this method may trigger dependency graph recalculation.
    *
@@ -1890,6 +1967,8 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Moves the content of a cell block from source to the target location.
+   *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
    *
    * Note that this method may trigger dependency graph recalculation.
    *
@@ -1982,6 +2061,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Moves a particular number of rows to a specified position in a given sheet.
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note that this method may trigger dependency graph recalculation.
    *
    * @param {number} sheetId - a sheet number in which the operation will be performed
@@ -2062,6 +2143,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Moves a particular number of columns to a specified position in a given sheet.
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note that this method may trigger dependency graph recalculation.
    *
    * @param {number} sheetId - a sheet number in which the operation will be performed
@@ -2110,6 +2193,8 @@ export class HyperFormula implements TypedEmitter {
    * Stores a copy of the cell block in internal clipboard for the further paste.
    * Returns the copied values for use in external clipboard.
    *
+   * For more information, see the [Clipboard Operations guide](/guide/clipboard-operations.md).
+   *
    * @param {SimpleCellRange} source - rectangle range to copy
    *
    * @throws [[NoSheetWithIdError]] when the given sheet ID does not exist
@@ -2148,6 +2233,8 @@ export class HyperFormula implements TypedEmitter {
    * Almost any CRUD operation called after this method will abort the cut operation.
    * Returns the cut values for use in external clipboard.
    *
+   * For more information, see the [Clipboard Operations guide](/guide/clipboard-operations.md).
+   *
    * @param {SimpleCellRange} source - rectangle range to cut
    *
    * @throws [[ExpectedValueOfTypeError]] if source is of wrong type
@@ -2184,6 +2271,10 @@ export class HyperFormula implements TypedEmitter {
    * When called after [[copy]] it pastes copied values and formulas into a cell block.
    * When called after [[cut]] it performs [[moveCells]] operation into the cell block.
    * Does nothing if the clipboard is empty.
+   *
+   * For more information, see the [Clipboard Operations guide](/guide/clipboard-operations.md).
+   *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
    *
    * Note that this method may trigger dependency graph recalculation.
    *
@@ -2274,6 +2365,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Clears the redo stack in undoRedo history.
    *
+   * For more information, see the [Undo-Redo guide](/guide/undo-redo.md).
+   *
    * @example
    * ```js
    * const hfInstance = HyperFormula.buildFromArray([
@@ -2301,6 +2394,8 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Clears the undo stack in undoRedo history.
+   *
+   * For more information, see the [Undo-Redo guide](/guide/undo-redo.md).
    *
    * @example
    * ```js
@@ -2511,6 +2606,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Adds a new sheet to the HyperFormula instance. Returns given or autogenerated name of a new sheet.
    *
+   * Note that this method may trigger dependency graph recalculation.
+   *
    * @param {string} [sheetName] - if not specified, name is autogenerated
    *
    * @fires [[sheetAdded]] after the sheet was added
@@ -2540,6 +2637,7 @@ export class HyperFormula implements TypedEmitter {
       validateArgToType(sheetName, 'string', 'sheetName')
     }
     const addedSheetName = this._crudOperations.addSheet(sheetName)
+    this.recomputeIfDependencyGraphNeedsIt()
     this._emitter.emit(Events.SheetAdded, addedSheetName)
     return addedSheetName
   }
@@ -2579,6 +2677,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Removes a sheet
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note that this method may trigger dependency graph recalculation.
    *
    * @param {number} sheetId - sheet ID.
@@ -2609,7 +2709,7 @@ export class HyperFormula implements TypedEmitter {
    */
   public removeSheet(sheetId: number): ExportedChange[] {
     validateArgToType(sheetId, 'number', 'sheetId')
-    const displayName = this.sheetMapping.getDisplayName(sheetId) as string
+    const displayName = this.sheetMapping.getSheetName(sheetId) as string
     this._crudOperations.removeSheet(sheetId)
     const changes = this.recomputeIfDependencyGraphNeedsIt()
     this._emitter.emit(Events.SheetRemoved, displayName, changes)
@@ -2650,6 +2750,8 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Clears the sheet content. Double-checks if the sheet exists.
+   *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
    *
    * Note that this method may trigger dependency graph recalculation.
    *
@@ -2722,6 +2824,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Replaces the sheet content with new values.
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * @param {number} sheetId - sheet ID.
    * @param {RawCellContent[][]} values - array of new values
    *
@@ -2750,11 +2854,14 @@ export class HyperFormula implements TypedEmitter {
   }
 
   /**
-   * Computes simple (absolute) address of a cell address based on its string representation.
-   * If sheet name is present in string representation but not present in the engine, returns `undefined`.
+   * Computes the simple (absolute) address of a cell address, based on its string representation.
+   * - If a sheet name is present in the string representation but is not present in the engine, returns `undefined`.
+   * - If no sheet name is present in the string representation, uses `contextSheetId` as a sheet id in the returned address.
+   *
+   * For more information, see the [Cell references guide](/guide/cell-references.md).
    *
    * @param {string} cellAddress - string representation of cell address in A1 notation
-   * @param {number} sheetId - context used in case of missing sheet in the first argument
+   * @param {number} contextSheetId - sheet id used to construct the simple address in case of missing sheet name in `cellAddress` argument
    *
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type argument is of wrong type
    *
@@ -2763,33 +2870,35 @@ export class HyperFormula implements TypedEmitter {
    * const hfInstance = HyperFormula.buildEmpty();
    * hfInstance.addSheet('Sheet0'); //sheetId = 0
    *
-   * // returns { sheet: 0, col: 0, row: 0 }
-   * const simpleCellAddress = hfInstance.simpleCellAddressFromString('A1', 0);
+   * // returns { sheet: 42, col: 0, row: 0 }
+   * const simpleCellAddress = hfInstance.simpleCellAddressFromString('A1', 42);
    *
    * // returns { sheet: 0, col: 0, row: 5 }
-   * const simpleCellAddressTwo = hfInstance.simpleCellAddressFromString('Sheet1!A6');
+   * const simpleCellAddress = hfInstance.simpleCellAddressFromString('Sheet0!A6', 42);
    *
    * // returns { sheet: 0, col: 0, row: 5 }
-   * const simpleCellAddressTwo = hfInstance.simpleCellAddressFromString('Sheet1!$A$6');
+   * const simpleCellAddress = hfInstance.simpleCellAddressFromString('Sheet0!$A$6', 42);
    *
    * // returns 'undefined', as there's no 'Sheet 2' in the HyperFormula instance
-   * const simpleCellAddressTwo = hfInstance.simpleCellAddressFromString('Sheet2!A6');
+   * const simpleCellAddress = hfInstance.simpleCellAddressFromString('Sheet2!A6', 42);
    * ```
    *
    * @category Helpers
    */
-  public simpleCellAddressFromString(cellAddress: string, sheetId: number): SimpleCellAddress | undefined {
+  public simpleCellAddressFromString(cellAddress: string, contextSheetId: number): SimpleCellAddress | undefined {
     validateArgToType(cellAddress, 'string', 'cellAddress')
-    validateArgToType(sheetId, 'number', 'sheetId')
-    return simpleCellAddressFromString(this.sheetMapping.get, cellAddress, sheetId)
+    validateArgToType(contextSheetId, 'number', 'sheetId')
+    return simpleCellAddressFromString(this.sheetMapping.getSheetId.bind(this.sheetMapping), cellAddress, contextSheetId)
   }
 
   /**
    * Computes simple (absolute) address of a cell range based on its string representation.
    * If sheet name is present in string representation but not present in the engine, returns `undefined`.
    *
+   * For more information, see the [Cell references guide](/guide/cell-references.md).
+   *
    * @param {string} cellRange - string representation of cell range in A1 notation
-   * @param {number} sheetId - context used in case of missing sheet in the first argument
+   * @param {number} contextSheetId - sheet id used to construct the simple address in case of missing sheet name in `cellRange` argument
    *
    * @throws [[NoSheetWithIdError]] when the given sheet ID does not exist
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type argument is of wrong type
@@ -2805,17 +2914,19 @@ export class HyperFormula implements TypedEmitter {
    *
    * @category Helpers
    */
-  public simpleCellRangeFromString(cellRange: string, sheetId: number): SimpleCellRange | undefined {
+  public simpleCellRangeFromString(cellRange: string, contextSheetId: number): SimpleCellRange | undefined {
     validateArgToType(cellRange, 'string', 'cellRange')
-    validateArgToType(sheetId, 'number', 'sheetId')
-    return simpleCellRangeFromString(this.sheetMapping.get, cellRange, sheetId)
+    validateArgToType(contextSheetId, 'number', 'sheetId')
+    return simpleCellRangeFromString(this.sheetMapping.getSheetId.bind(this.sheetMapping), cellRange, contextSheetId)
   }
 
   /**
-   * Returns string representation of an absolute address in A1 notation or `undefined` if the sheet index is not present in the engine.
+   * Computes string representation of an absolute address in A1 notation. If `cellAddress.sheet` is not present in the engine, returns `undefined`.
+   *
+   * For more information, see the [Cell references guide](/guide/cell-references.md).
    *
    * @param {SimpleCellAddress} cellAddress - object representation of an absolute address
-   * @param {number} sheetId - context used in case of missing sheet in the first argument
+   * @param {object | number} optionsOrContextSheetId - options object or number used as context sheet id to construct the string address (see examples)
    *
    * @throws [[ExpectedValueOfTypeError]] if its arguments are of wrong type
    *
@@ -2823,26 +2934,52 @@ export class HyperFormula implements TypedEmitter {
    * ```js
    * const hfInstance = HyperFormula.buildEmpty();
    * hfInstance.addSheet('Sheet0'); //sheetId = 0
+   * const addr = { sheet: 0, col: 1, row: 1 };
    *
    * // should return 'B2'
-   * const A1Notation = hfInstance.simpleCellAddressToString({ sheet: 0, col: 1, row: 1 }, 0);
+   * const A1Notation = hfInstance.simpleCellAddressToString(addr);
+   *
+   * // should return 'B2'
+   * const A1Notation = hfInstance.simpleCellAddressToString(addr, { includeSheetName: false });
+   *
+   * // should return 'Sheet0!B2'
+   * const A1Notation = hfInstance.simpleCellAddressToString(addr, { includeSheetName: true });
+   *
+   * // should return 'B2' as context sheet id is the same as addr.sheet
+   * const A1Notation = hfInstance.simpleCellAddressToString(addr, 0);
+   *
+   * // should return 'Sheet0!B2' as context sheet id is different from addr.sheet
+   * const A1Notation = hfInstance.simpleCellAddressToString(addr, 42);
    * ```
    *
    * @category Helpers
    */
-  public simpleCellAddressToString(cellAddress: SimpleCellAddress, sheetId: number): string | undefined {
+  public simpleCellAddressToString(cellAddress: SimpleCellAddress, optionsOrContextSheetId: { includeSheetName?: boolean } | number = {}) {
     if (!isSimpleCellAddress(cellAddress)) {
       throw new ExpectedValueOfTypeError('SimpleCellAddress', 'cellAddress')
     }
-    validateArgToType(sheetId, 'number', 'sheetId')
-    return simpleCellAddressToString(this.sheetMapping.fetchDisplayName, cellAddress, sheetId)
+
+    const contextSheetId = typeof optionsOrContextSheetId === 'number'
+      ? optionsOrContextSheetId
+      : optionsOrContextSheetId.includeSheetName ? cellAddress.sheet+1 : cellAddress.sheet
+
+    return simpleCellAddressToString(this.sheetMapping.getSheetNameOrThrowError.bind(this.sheetMapping), cellAddress, contextSheetId)
   }
 
   /**
-   * Returns string representation of an absolute range in A1 notation or `undefined` if the sheet index is not present in the engine.
+   * Computes string representation of an absolute range in A1 notation.
+   * Returns `undefined` if:
+   * - `cellRange` is not a valid range,
+   * - `cellRange.start.sheet` and `cellRange.start.end` are different,
+   * - `cellRange.start.sheet` is not present in the engine,
+   * - `cellRange.start.end` is not present in the engine.
+   *
+   * Note: This method is useful only for cell ranges; does not work with column ranges and row ranges.
+   *
+   * For more information, see the [Cell references guide](/guide/cell-references.md).
    *
    * @param {SimpleCellRange} cellRange - object representation of an absolute range
-   * @param {number} sheetId - context used in case of missing sheet in the first argument
+   * @param {object | number} optionsOrContextSheetId - options object or number used as context sheet id to construct the string address (see examples)
    *
    * @throws [[ExpectedValueOfTypeError]] if its arguments are of wrong type
    *
@@ -2850,23 +2987,36 @@ export class HyperFormula implements TypedEmitter {
    * ```js
    * const hfInstance = HyperFormula.buildEmpty();
    * hfInstance.addSheet('Sheet0'); //sheetId = 0
-   * hfInstance.addSheet('Sheet1'); //sheetId = 1
+   * const range = { start: { sheet: 0, col: 1, row: 1 }, end: { sheet: 0, col: 2, row: 1 } };
    *
    * // should return 'B2:C2'
-   * const A1Notation = hfInstance.simpleCellRangeToString({ start: { sheet: 0, col: 1, row: 1 }, end: { sheet: 0, col: 2, row: 1 } }, 0);
+   * const A1Notation = hfInstance.simpleCellRangeToString(range);
    *
-   *  // should return 'Sheet1!B2:C2'
-   * const another = hfInstance.simpleCellRangeToString({ start: { sheet: 1, col: 1, row: 1 }, end: { sheet: 1, col: 2, row: 1 } }, 0);
+   * // should return 'B2:C2'
+   * const A1Notation = hfInstance.simpleCellRangeToString(range, { includeSheetName: false });
+   *
+   * // should return 'Sheet0!B2:C2'
+   * const A1Notation = hfInstance.simpleCellRangeToString(range, { includeSheetName: true });
+   *
+   * // should return 'B2:C2' as context sheet id is the same as range.start.sheet and range.end.sheet
+   * const A1Notation = hfInstance.simpleCellRangeToString(range, 0);
+   *
+   * // should return 'Sheet0!B2:C2' as context sheet id is different from range.start.sheet and range.end.sheet
+   * const A1Notation = hfInstance.simpleCellRangeToString(range, 42);
    * ```
    *
    * @category Helpers
    */
-  public simpleCellRangeToString(cellRange: SimpleCellRange, sheetId: number): string | undefined {
+  public simpleCellRangeToString(cellRange: SimpleCellRange, optionsOrContextSheetId: { includeSheetName?: boolean } | number = {}): string | undefined {
     if (!isSimpleCellRange(cellRange)) {
       throw new ExpectedValueOfTypeError('SimpleCellRange', 'cellRange')
     }
-    validateArgToType(sheetId, 'number', 'sheetId')
-    return simpleCellRangeToString(this.sheetMapping.fetchDisplayName, cellRange, sheetId)
+
+    const contextSheetId = typeof optionsOrContextSheetId === 'number'
+      ? optionsOrContextSheetId
+      : optionsOrContextSheetId.includeSheetName ? cellRange.start.sheet+cellRange.end.sheet+1 : cellRange.start.sheet
+
+    return simpleCellRangeToString(this.sheetMapping.getSheetNameOrThrowError.bind(this.sheetMapping), cellRange, contextSheetId)
   }
 
   /**
@@ -2875,6 +3025,8 @@ export class HyperFormula implements TypedEmitter {
    * - Some of the ranges that contain the given cell address or range
    *
    * The exact result depends on the optimizations applied by the HyperFormula to the dependency graph, some of which are described in the section ["Optimizations for large ranges"](../../guide/dependency-graph.md#optimizations-for-large-ranges).
+   *
+   * The returned array includes also named expression dependents. They are represented as cell references with sheet ID `-1`.
    *
    * @param {SimpleCellAddress | SimpleCellRange} address - object representation of an absolute address or range of addresses
    *
@@ -2897,7 +3049,7 @@ export class HyperFormula implements TypedEmitter {
     if (isSimpleCellAddress(address)) {
       vertex = this._dependencyGraph.addressMapping.getCell(address)
     } else if (isSimpleCellRange(address)) {
-      vertex = this._dependencyGraph.rangeMapping.getRange(address.start, address.end)
+      vertex = this._dependencyGraph.rangeMapping.getRangeVertex(address.start, address.end)
     } else {
       throw new ExpectedValueOfTypeError('SimpleCellAddress | SimpleCellRange', address)
     }
@@ -2911,6 +3063,8 @@ export class HyperFormula implements TypedEmitter {
    * Returns all the in-neighbors in the [dependency graph](../../guide/dependency-graph.md) for a given cell address or range. In particular:
    * - If the argument is a single cell, `getCellPrecedents()` returns all cells and ranges contained in that cell's formula.
    * - If the argument is a range of cells, `getCellPrecedents()` returns some of the cell addresses and smaller ranges contained in that range (but not all of them). The exact result depends on the optimizations applied by the HyperFormula to the dependency graph, some of which are described in the section ["Optimizations for large ranges"](../../guide/dependency-graph.md#optimizations-for-large-ranges).
+   *
+   * The returned array includes also named expression precedents. They are represented as cell references with sheet ID `-1`.
    *
    * @param {SimpleCellAddress | SimpleCellRange} address - object representation of an absolute address or range of addresses
    *
@@ -2933,7 +3087,7 @@ export class HyperFormula implements TypedEmitter {
     if (isSimpleCellAddress(address)) {
       vertex = this._dependencyGraph.addressMapping.getCell(address)
     } else if (isSimpleCellRange(address)) {
-      vertex = this._dependencyGraph.rangeMapping.getRange(address.start, address.end)
+      vertex = this._dependencyGraph.rangeMapping.getRangeVertex(address.start, address.end)
     } else {
       throw new ExpectedValueOfTypeError('SimpleCellAddress | SimpleCellRange', address)
     }
@@ -2965,7 +3119,7 @@ export class HyperFormula implements TypedEmitter {
    */
   public getSheetName(sheetId: number): string | undefined {
     validateArgToType(sheetId, 'number', 'sheetId')
-    return this.sheetMapping.getDisplayName(sheetId)
+    return this.sheetMapping.getSheetName(sheetId)
   }
 
   /**
@@ -2986,7 +3140,7 @@ export class HyperFormula implements TypedEmitter {
    * @category Sheets
    */
   public getSheetNames(): string[] {
-    return this.sheetMapping.sheetNames()
+    return this.sheetMapping.getSheetNames()
   }
 
   /**
@@ -3011,7 +3165,7 @@ export class HyperFormula implements TypedEmitter {
    */
   public getSheetId(sheetName: string): number | undefined {
     validateArgToType(sheetName, 'string', 'sheetName')
-    return this.sheetMapping.get(sheetName)
+    return this.sheetMapping.getSheetId(sheetName)
   }
 
   /**
@@ -3198,6 +3352,8 @@ export class HyperFormula implements TypedEmitter {
    * Returns type of the cell value of a given address.
    * The method accepts cell coordinates as object with column, row and sheet numbers.
    *
+   * For more information, see the [Types of values guide](/guide/types-of-values.md).
+   *
    * @param {SimpleCellAddress} cellAddress - cell coordinates
    *
    * @throws [[NoSheetWithIdError]] when the given sheet ID does not exist
@@ -3231,6 +3387,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Returns detailed type of the cell value of a given address.
    * The method accepts cell coordinates as object with column, row and sheet numbers.
+   *
+   * For more information, see the [Types of values guide](/guide/types-of-values.md).
    *
    * @param {SimpleCellAddress} cellAddress - cell coordinates
    *
@@ -3352,6 +3510,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Renames a specified sheet.
    *
+   * Note that this method may trigger dependency graph recalculation.
+   *
    * @param {number} sheetId - a sheet ID
    * @param {string} newName - a name of the sheet to be given, if is the same as the old one the method does nothing
    *
@@ -3378,13 +3538,16 @@ export class HyperFormula implements TypedEmitter {
     validateArgToType(sheetId, 'number', 'sheetId')
     validateArgToType(newName, 'string', 'newName')
     const oldName = this._crudOperations.renameSheet(sheetId, newName)
+    this.recomputeIfDependencyGraphNeedsIt()
     if (oldName !== undefined) {
       this._emitter.emit(Events.SheetRenamed, oldName, newName)
     }
   }
 
   /**
-   * Runs multiple operations and recomputes formulas at the end.
+   * Runs the provided callback as a single [batch operation](../../guide/batch-operations.md) and returns the changed cells.
+   *
+   * Returns [an array of cells whose values changed as a result of all batched operations](/guide/basic-operations.md#changes-array).
    *
    * Note that this method may trigger dependency graph recalculation.
    *
@@ -3427,7 +3590,7 @@ export class HyperFormula implements TypedEmitter {
   }
 
   /**
-   * Suspends the dependency graph recalculation.
+   * Suspends the dependency graph recalculation to start a [batch operation](../../guide/batch-operations.md).
    * It allows optimizing the performance.
    * With this method, multiple CRUD operations can be done without triggering recalculation after every operation.
    * Suspending evaluation should result in an overall faster calculation compared to recalculating after each operation separately.
@@ -3465,8 +3628,8 @@ export class HyperFormula implements TypedEmitter {
   }
 
   /**
-   * Resumes the dependency graph recalculation that was suspended with [[suspendEvaluation]].
-   * It also triggers the recalculation and returns changes that are a result of all batched operations.
+   * Resumes the dependency graph recalculation that was [suspended](../../guide/batch-operations.md) with [[suspendEvaluation]].
+   * It also triggers the recalculation and returns [an array of cells whose values changed as a result of all batched operations](/guide/basic-operations.md#changes-array).
    *
    * @fires [[valuesUpdated]] if recalculation was triggered by this change
    * @fires [[evaluationResumed]] after the recomputation of necessary values
@@ -3503,7 +3666,7 @@ export class HyperFormula implements TypedEmitter {
   }
 
   /**
-   * Checks if the dependency graph recalculation process is suspended or not.
+   * Checks if the dependency graph recalculation process is [suspended](../../guide/batch-operations.md) or not.
    *
    * @example
    * ```js
@@ -3566,6 +3729,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Adds a specified named expression.
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note that this method may trigger dependency graph recalculation.
    *
    * @param {string} expressionName - a name of the expression to be added
@@ -3615,6 +3780,8 @@ export class HyperFormula implements TypedEmitter {
    * Gets specified named expression value.
    * Returns a [[CellValue]] or undefined if the given named expression does not exist.
    *
+   * For more information, see the [Named expressions guide](/guide/named-expressions.md).
+   *
    * @param {string} expressionName - expression name, case-insensitive.
    * @param {number?} scope - scope definition, `sheetId` for local scope or `undefined` for global scope
    *
@@ -3654,6 +3821,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Returns a normalized formula string for given named expression, or `undefined` for a named expression that does not exist or does not hold a formula.
    *
+   * For more information, see the [Named expressions guide](/guide/named-expressions.md).
+   *
    * @param {string} expressionName - expression name, case-insensitive.
    * @param {number?} scope - scope definition, `sheetId` for local scope or `undefined` for global scope
    *
@@ -3692,6 +3861,8 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Returns a named expression, or `undefined` for a named expression that does not exist or does not hold a formula.
+   *
+   * For more information, see the [Named expressions guide](/guide/named-expressions.md).
    *
    * @param {string} expressionName - expression name, case-insensitive.
    * @param {number?} scope - scope definition, `sheetId` for local scope or `undefined` for global scope
@@ -3784,6 +3955,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Changes a given named expression to a specified formula.
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note that this method may trigger dependency graph recalculation.
    *
    * @param {string} expressionName - an expression name, case-insensitive.
@@ -3866,6 +4039,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Removes a named expression.
    *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
+   *
    * Note that this method may trigger dependency graph recalculation.
    *
    * @param {string} expressionName - expression name, case-insensitive.
@@ -3913,6 +4088,8 @@ export class HyperFormula implements TypedEmitter {
    * - If scope parameter is provided, returns an array of expression names defined for this scope.
    * - If scope parameter is undefined, returns an array of global expression names.
    *
+   * For more information, see the [Named expressions guide](/guide/named-expressions.md).
+   *
    * @param {number?} scope - scope of the named expressions, `sheetId` for local scope or `undefined` for global scope
    *
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type argument is of wrong type
@@ -3951,6 +4128,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Returns all named expressions serialized.
    *
+   * For more information, see the [Named expressions guide](/guide/named-expressions.md).
+   *
    * @example
    * ```js
    * const hfInstance = HyperFormula.buildFromArray([
@@ -3982,12 +4161,12 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Parses and then unparses a formula.
-   * Returns a normalized formula (e.g. restores the original capitalization of sheet names, function names, cell addresses, and named expressions).
+   * Returns a normalized formula (e.g., restores the original capitalization of sheet names, function names, cell addresses, and named expressions).
    *
    * @param {string} formulaString - a formula in a proper format - it must start with "="
    *
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type argument is of wrong type
-   * @throws [[NotAFormulaError]] when the provided string is not a valid formula, i.e. does not start with "="
+   * @throws [[NotAFormulaError]] when the provided string is not a valid formula, i.e., does not start with "="
    *
    * @example
    * ```js
@@ -4021,7 +4200,7 @@ export class HyperFormula implements TypedEmitter {
    * @param {number} sheetId - The ID of a sheet in context of which the formula gets evaluated.
    *
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type arguments is of wrong type.
-   * @throws [[NotAFormulaError]] when the provided string is not a valid formula (i.e. doesn't start with `=`).
+   * @throws [[NotAFormulaError]] when the provided string is not a valid formula (i.e., doesn't start with `=`).
    * @throws [[NoSheetWithIdError]] when the provided `sheetID` doesn't exist.
    *
    * @example
@@ -4054,6 +4233,42 @@ export class HyperFormula implements TypedEmitter {
   }
 
   /**
+   * Return a list of named expressions used by a formula.
+   *
+   * @param {string} formulaString - A formula in a proper format, starting with `=`.
+   *
+   * @throws [[ExpectedValueOfTypeError]] if any of its basic type arguments is of wrong type.
+   * @throws [[NotAFormulaError]] when the provided string is not a valid formula (i.e., doesn't start with `=`).
+   *
+   * @example
+   * ```js
+   * const hfInstance = HyperFormula.buildEmpty();
+   *
+   * // returns a list of named expressions used by a formula
+   * // for this example, returns ['foo', 'bar']
+   * const namedExpressions = hfInstance.getNamedExpressionsFromFormula('=foo+bar*2');
+   * ```
+   *
+   * @category Helpers
+   */
+  public getNamedExpressionsFromFormula(formulaString: string): string[] {
+    validateArgToType(formulaString, 'string', 'formulaString')
+    const { ast, dependencies } = this.extractTemporaryFormula(formulaString)
+
+    if (ast === undefined) {
+      throw new NotAFormulaError()
+    }
+
+    const namedExpressionDependencies = dependencies
+      .filter((dep): dep is NamedExpressionDependency => dep instanceof NamedExpressionDependency)
+      .map(namedExpr => namedExpr.name)
+
+    const uniqueNamedExpressionDependencies = [ ...new Set(namedExpressionDependencies) ]
+
+    return uniqueNamedExpressionDependencies
+  }
+
+  /**
    * Validates the formula.
    * If the provided string starts with "=" and is a parsable formula, the method returns `true`.
    * The validation is purely grammatical: the method doesn't verify if the formula can be calculated or not.
@@ -4074,15 +4289,7 @@ export class HyperFormula implements TypedEmitter {
     validateArgToType(formulaString, 'string', 'formulaString')
     const { ast } = this.extractTemporaryFormula(formulaString)
 
-    if (ast === undefined) {
-      return false
-    }
-
-    if (ast.type === AstNodeType.ERROR && !ast.error) {
-      return false // codecov note: could not identify a formulaString that would cause this condition
-    }
-
-    return true
+    return ast !== undefined
   }
 
   /**
@@ -4107,7 +4314,9 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Returns class of a plugin used by function with given id
    *
-   * @param {string} functionId - id of a function, e.g. 'SUMIF'
+   * For more information, see the [Custom functions guide](/guide/custom-functions.md).
+   *
+   * @param {string} functionId - id of a function, e.g., 'SUMIF'
    *
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type argument is of wrong type
    *
@@ -4152,6 +4361,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Interprets number as a date + time.
    *
+   * For more information, see the [Date and time handling guide](/guide/date-and-time-handling.md).
+   *
    * @param {number} inputNumber - number of days since nullDate, should be non-negative, fractions are interpreted as hours/minutes/seconds.
    *
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type argument is of wrong type
@@ -4177,6 +4388,8 @@ export class HyperFormula implements TypedEmitter {
   /**
    * Interprets number as a date.
    *
+   * For more information, see the [Date and time handling guide](/guide/date-and-time-handling.md).
+   *
    * @param {number} inputNumber - number of days since nullDate, should be non-negative, fractions are ignored.
    *
    * @throws [[ExpectedValueOfTypeError]] if any of its basic type argument is of wrong type
@@ -4200,6 +4413,8 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Interprets number as a time (hours/minutes/seconds).
+   *
+   * For more information, see the [Date and time handling guide](/guide/date-and-time-handling.md).
    *
    * @param {number} inputNumber - time in 24h units.
    *
@@ -4321,12 +4536,22 @@ export class HyperFormula implements TypedEmitter {
     objectDestroy(this)
   }
 
+  /**
+   * Throws an error if evaluation is suspended.
+   *
+   * @internal
+   */
   private ensureEvaluationIsNotSuspended() {
     if (this._evaluationSuspended) {
       throw new EvaluationSuspendedError()
     }
   }
-  
+
+  /**
+   * Parses a formula string and extracts its AST and dependencies.
+   *
+   * @internal
+   */
   private extractTemporaryFormula(formulaString: string, sheetId: number = 1): { ast?: Ast, address: SimpleCellAddress, dependencies: RelativeDependency[] } {
     const parsedCellContent = this._cellContentParser.parse(formulaString)
     const address = {sheet: sheetId, col: 0, row: 0}
@@ -4372,6 +4597,8 @@ export class HyperFormula implements TypedEmitter {
 
   /**
    * Runs a recomputation starting from recently changed vertices.
+   *
+   * Returns [an array of cells whose values changed as a result of this operation](/guide/basic-operations.md#changes-array).
    *
    * Note that this method may trigger dependency graph recalculation.
    *

@@ -1,12 +1,12 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
 import {ArraySizePredictor} from './ArraySize'
 import {CellContentParser} from './CellContentParser'
 import {ClipboardOperations} from './ClipboardOperations'
-import {Config, ConfigParams} from './Config'
+import {Config} from './Config'
 import {CrudOperations} from './CrudOperations'
 import {DateTimeHelper} from './DateTimeHelper'
 import {DependencyGraph} from './DependencyGraph'
@@ -28,6 +28,7 @@ import {Serialization, SerializedNamedExpression} from './Serialization'
 import {findBoundaries, Sheet, Sheets, validateAsSheet} from './Sheet'
 import {EmptyStatistics, Statistics, StatType} from './statistics'
 import {UndoRedo} from './UndoRedo'
+import {ConfigParams} from './ConfigParams'
 
 export type EngineState = {
   config: Config,
@@ -86,13 +87,17 @@ export class BuildEngineFactory {
           throw new SheetSizeLimitExceededError()
         }
         const sheetId = sheetMapping.addSheet(sheetName)
-        addressMapping.autoAddSheet(sheetId, boundaries)
+        addressMapping.addSheetAndSetStrategyBasedOnBoundaries(sheetId, boundaries, { throwIfSheetAlreadyExists: true })
       }
     }
 
-    const parser = new ParserWithCaching(config, functionRegistry, sheetMapping.get)
+    const parser = new ParserWithCaching(
+      config,
+      functionRegistry,
+      dependencyGraph.sheetReferenceRegistrar.ensureSheetRegistered.bind(dependencyGraph.sheetReferenceRegistrar)
+    )
     lazilyTransformingAstService.parser = parser
-    const unparser = new Unparser(config, buildLexerConfig(config), sheetMapping.fetchDisplayName, namedExpressions)
+    const unparser = new Unparser(config, sheetMapping, namedExpressions)
     const dateTimeHelper = new DateTimeHelper(config)
     const numberLiteralHelper = new NumberLiteralHelper(config)
     const arithmeticHelper = new ArithmeticHelper(config, dateTimeHelper, numberLiteralHelper)
@@ -104,12 +109,8 @@ export class BuildEngineFactory {
     lazilyTransformingAstService.undoRedo = undoRedo
     const clipboardOperations = new ClipboardOperations(config, dependencyGraph, operations)
     const crudOperations = new CrudOperations(config, operations, undoRedo, clipboardOperations, dependencyGraph, columnSearch, parser, cellContentParser, lazilyTransformingAstService, namedExpressions)
-    inputNamedExpressions.forEach((entry: SerializedNamedExpression) => {
-      crudOperations.ensureItIsPossibleToAddNamedExpression(entry.name, entry.expression, entry.scope)
-      crudOperations.operations.addNamedExpression(entry.name, entry.expression, entry.scope, entry.options)
-    })
 
-    const exporter = new Exporter(config, namedExpressions, sheetMapping.fetchDisplayName, lazilyTransformingAstService)
+    const exporter = new Exporter(config, namedExpressions, sheetMapping, lazilyTransformingAstService)
     const serialization = new Serialization(dependencyGraph, unparser, exporter)
 
     const interpreter = new Interpreter(config, dependencyGraph, columnSearch, stats, arithmeticHelper, functionRegistry, namedExpressions, serialization, arraySizePredictor, dateTimeHelper)
@@ -117,6 +118,11 @@ export class BuildEngineFactory {
     stats.measure(StatType.GRAPH_BUILD, () => {
       const graphBuilder = new GraphBuilder(dependencyGraph, columnSearch, parser, cellContentParser, stats, arraySizePredictor)
       graphBuilder.buildGraph(sheets, stats)
+    })
+
+    inputNamedExpressions.forEach((entry: SerializedNamedExpression) => {
+      crudOperations.ensureItIsPossibleToAddNamedExpression(entry.name, entry.expression, entry.scope)
+      crudOperations.operations.addNamedExpression(entry.name, entry.expression, entry.scope, entry.options)
     })
 
     const evaluator = new Evaluator(config, stats, interpreter, lazilyTransformingAstService, dependencyGraph, columnSearch)

@@ -76,10 +76,10 @@ node and avoid duplicating the work during computation.
 To get the immediate precedents of a cell or a range (the in-neighbors of the cell node or the range node), use the [`getCellPrecedents()`](../api/classes/hyperformula.html#getcellprecedents) method:
 
 ```js
-const hfInstance = HyperFormula.buildFromArray( [ ['1', '=A1', '=A1+B1'] ] );
+const hfInstance = HyperFormula.buildFromArray([[ '1', '2', '=A1', '=B1+C1' ]]);
 
-hfInstance.getCellPrecedents({ sheet: 0, col: 2, row: 0});
-// returns [{ sheet: 0, col: 0, row: 0}, { sheet: 0, col: 1, row: 0}]
+hfInstance.getCellPrecedents({ sheet: 0, col: 3, row: 0 });
+// returns [{ sheet: 0, col: 1, row: 0 }, { sheet: 0, col: 2, row: 0 }]
 ```
 
 ## Getting the immediate dependents of a cell or a range
@@ -87,42 +87,50 @@ hfInstance.getCellPrecedents({ sheet: 0, col: 2, row: 0});
 To get the immediate dependents of a cell or a range (the out-neighbors of the cell node or the range node), use the [`getCellDependents()`](../api/classes/hyperformula.html#getcelldependents) method:
 
 ```js
-const hfInstance = HyperFormula.buildFromArray( [ ['1', '=A1', '=A1+B1'] ] );
+const hfInstance = HyperFormula.buildFromArray([[ '1', '=A1', '=A1+B1', '=B1+C1' ]])
 
-hfInstance.getCellDependents({ sheet: 0, col: 2, row: 0});
-// returns [{ sheet: 0, col: 0, row: 0}, { sheet: 0, col: 1, row: 0}]
+hfInstance.getCellDependents({ sheet: 0, col: 0, row: 0 })
+// returns [{ sheet: 0, col: 1, row: 0 }, { sheet: 0, col: 2, row: 0 }]
 ```
 
 ## Getting all precedents of a cell or a range
 
 To get all precedents of a cell or a range (all precedent nodes reachable from the cell node or the range node), use the [`getCellPrecedents()`](../api/classes/hyperformula.html#getcellprecedents) method to implement a [Breadth-first search (BFS)](https://en.wikipedia.org/wiki/Breadth-first_search) algorithm:
 
-```
- 1      AllCellPrecedents={start}
- 2      let Q be an empty queue
- 4      Q.enqueue(start)
- 5      while Q is not empty do
- 6          cell := Q.dequeue()
- 7          S := getCellPrecedents(cell)
- 9          for all cells c in S do:
-10              if c is not in AllCellPrecedents then:
-11                  insert w to AllCellPrecedents
-12                  Q.enqueue(c)
-```
+<div class="language- extra-class">
+  <pre class="language-text" style="margin: 0; padding: 0;">
+    <code style="margin: 0; padding: 0;">
+      <span class="token">AllCellPrecedents</span>={<span class="token variable">start</span>}
+      <span class="token keyword">let</span> <span class="token variable">Q</span> <span class="token keyword">be</span> <span class="token keyword">an</span> <span class="token keyword">empty</span> <span class="token keyword">queue</span>
+      <span class="token variable">Q</span>.<span class="token function">enqueue</span>(<span class="token variable">start</span>)
+      <span class="token keyword">while</span> <span class="token variable">Q</span> <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token keyword">empty</span> <span class="token keyword">do</span>
+        <span class="token variable">cell</span> := <span class="token variable">Q</span>.<span class="token function">dequeue</span>()
+        <span class="token variable">S</span> := <span class="token function">getCellPrecedents</span>(<span class="token variable">cell</span>)
+        <span class="token keyword">for</span> <span class="token keyword">all</span> <span class="token variable">cells</span> <span class="token variable">c</span> <span class="token keyword">in</span> <span class="token variable">S</span> <span class="token keyword">do</span>:
+          <span class="token keyword">if</span> <span class="token variable">c</span> <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token keyword">in</span> <span class="token variable">AllCellPrecedents</span> <span class="token keyword">then</span>:
+            <span class="token function">insert</span> <span class="token variable">w</span> <span class="token keyword">to</span> <span class="token variable">AllCellPrecedents</span>
+            <span class="token variable">Q</span>.<span class="token function">enqueue</span>(<span class="token variable">c</span>)
+    </code>
+  </pre>
+</div>
 
 ## Getting all dependents of a cell or a range
 
 To get all dependents of a cell or a range (all dependent nodes reachable from the cell node or the range node), use the [`getCellDependents()`](../api/classes/hyperformula.html#getcelldependents) method to implement a [Breadth-first search (BFS)](https://en.wikipedia.org/wiki/Breadth-first_search) algorithm:
 
-```
- 1      AllCellDependents={start}
- 2      let Q be an empty queue
- 4      Q.enqueue(start)
- 5      while Q is not empty do
- 6          cell := Q.dequeue()
- 7          S := getCellDependents(cell)
- 9          for all cells c in S do:
-10              if c is not in AllCellDependents then:
-11                  insert w to AllCellDependents
-12                  Q.enqueue(c)
-```
+<div class="language- extra-class">
+  <pre class="language-text" style="margin: 0; padding: 0;">
+    <code style="margin: 0; padding: 0;">
+      <span class="token">AllCellDependents</span>={<span class="token variable">start</span>}
+      <span class="token keyword">let</span> <span class="token variable">Q</span> <span class="token keyword">be</span> <span class="token keyword">an</span> <span class="token keyword">empty</span> <span class="token keyword">queue</span>
+      <span class="token variable">Q</span>.<span class="token function">enqueue</span>(<span class="token variable">start</span>)
+      <span class="token keyword">while</span> <span class="token variable">Q</span> <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token keyword">empty</span> <span class="token keyword">do</span>
+        <span class="token variable">cell</span> := <span class="token variable">Q</span>.<span class="token function">dequeue</span>()
+        <span class="token variable">S</span> := <span class="token function">getCellDependents</span>(<span class="token variable">cell</span>)
+        <span class="token keyword">for</span> <span class="token keyword">all</span> <span class="token variable">cells</span> <span class="token variable">c</span> <span class="token keyword">in</span> <span class="token variable">S</span> <span class="token keyword">do</span>:
+          <span class="token keyword">if</span> <span class="token variable">c</span> <span class="token keyword">is</span> <span class="token keyword">not</span> <span class="token keyword">in</span> <span class="token variable">AllCellDependents</span> <span class="token keyword">then</span>:
+            <span class="token function">insert</span> <span class="token variable">w</span> <span class="token keyword">to</span> <span class="token variable">AllCellDependents</span>
+            <span class="token variable">Q</span>.<span class="token function">enqueue</span>(<span class="token variable">c</span>)
+    </code>
+  </pre>
+</div>

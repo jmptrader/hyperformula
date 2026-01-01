@@ -1,10 +1,10 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
 import {CellError, ErrorType, SimpleCellAddress} from '../../Cell'
-import {FormulaVertex} from '../../DependencyGraph/FormulaCellVertex'
+import {FormulaVertex} from '../../DependencyGraph/FormulaVertex'
 import {ErrorMessage} from '../../error-message'
 import {AstNodeType, ProcedureAst} from '../../parser'
 import {InterpreterState} from '../InterpreterState'
@@ -457,7 +457,7 @@ export class InformationPlugin extends FunctionPlugin implements FunctionPluginT
       () => state.formulaAddress.sheet + 1,
       (reference: SimpleCellAddress) => reference.sheet + 1,
       (value: string) => {
-        const sheetNumber = this.dependencyGraph.sheetMapping.get(value)
+        const sheetNumber = this.dependencyGraph.sheetMapping.getSheetId(value)
         if (sheetNumber !== undefined) {
           return sheetNumber + 1
         } else {

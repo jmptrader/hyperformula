@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
 import {AbsoluteCellRange} from '../../AbsoluteCellRange'
@@ -75,8 +75,10 @@ export interface FunctionMetadata {
 
   /**
    * Engine.
+   *
+   * Name of the method that calculates the size of the result array. Not required for functions that never return an array.
    */
-  arraySizeMethod?: string,
+  sizeOfResultArrayMethod?: string,
 
   /**
    * Engine.
@@ -89,7 +91,7 @@ export interface FunctionMetadata {
    * Engine.
    *
    * If set to `true`, the function gets recalculated with each sheet shape change
-   * (e.g. when adding/removing rows or columns).
+   * (e.g., when adding/removing rows or columns).
    */
   isDependentOnSheetStructureChange?: boolean,
 
@@ -107,7 +109,7 @@ export interface FunctionMetadata {
    *
    * If set to `true`, the function enables the array arithmetic mode in its arguments and nested expressions.
    */
-  arrayFunction?: boolean,
+  enableArrayArithmeticForArguments?: boolean,
 
   /**
    * Internal.
@@ -117,6 +119,20 @@ export interface FunctionMetadata {
    * Some functions do not allow vectorization: array-output, and special functions.
    */
   vectorizationForbidden?: boolean,
+
+  /**
+   * Engine.
+   *
+   * @deprecated since 3.1.0; Use `enableArrayArithmeticForArguments` instead.
+   */
+  arrayFunction?: boolean,
+
+  /**
+   * Engine.
+   *
+   * @deprecated since 3.1.0; Use `sizeOfResultArrayMethod` instead.
+   */
+  arraySizeMethod?: string,
 }
 
 export interface FunctionPluginDefinition {
@@ -179,7 +195,7 @@ export interface FunctionArgument {
 
   /**
    * If set to `true`, arguments need to be passed with full type information.
-   * (e.g. for numbers: `Date` or `DateTime` or `Time` or `Currency` or `Percentage`)
+   * (e.g., for numbers: `Date` or `DateTime` or `Time` or `Currency` or `Percentage`)
    */
   passSubtype?: boolean,
 
@@ -577,4 +593,3 @@ export abstract class FunctionPlugin implements FunctionPluginTypecheck<Function
     }
   }
 }
-

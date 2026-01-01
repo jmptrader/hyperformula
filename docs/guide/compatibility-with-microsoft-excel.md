@@ -1,6 +1,6 @@
 # Compatibility with Microsoft Excel
 
-Achieve nearly full compatibility wih Microsoft Excel, using the right HyperFormula configuration.
+Achieve nearly full compatibility with Microsoft Excel, using the right HyperFormula configuration.
 
 **Contents:**
 [[toc]]
@@ -12,6 +12,17 @@ While HyperFormula conforms to the [OpenDocument](https://docs.oasis-open.org/of
 That said, there are cases when HyperFormula can't be compatible with all three at the same time, because of inconsistencies (between the OpenDocument standard, Microsoft Excel and Google Sheets), limitations of HyperFormula at its current development stage (version `{{ $page.version }}`), or limitations of Microsoft Excel or Google Sheets themselves. For the full list of such differences, see [this](list-of-differences.md) page.
 
 Still, with the right configuration, you can achieve nearly full compatibility.
+
+### Excel function coverage
+
+HyperFormula implements **350 out of 515 Excel functions** (68% coverage), as of version 3.1.0 and Excel 2024. This means that **165 Excel functions** (32%) are not yet available in HyperFormula.
+
+Additionally, HyperFormula includes some functions that are not part of Excel's standard function set, bringing the total number of available functions to **{{ $page.functionsCount }}**.
+
+For a complete list of supported functions, see the [built-in functions](built-in-functions.md) page.
+
+If you need any of the missing Excel functions, you can [contact us](contact.md) or implement them as [custom functions](custom-functions.md), extending HyperFormula's capabilities to meet your specific requirements.
+
 
 ## Configure compatibility with Microsoft Excel
 
@@ -56,7 +67,7 @@ Related options:
 
 Microsoft Excel has built-in constants (keywords) for the boolean values (`TRUE` and `FALSE`).
 
-To set up HyperFormula in the same way, define `TRUE` and `FALSE` as [named expressions](named-expressions.md), by using HyperFormula's [`TRUE`](built-in-functions.md#logical) and [`FALSE`](built-in-functions.md#logical) functions.
+To set up HyperFormula in the same way, define `TRUE` and `FALSE` as [named expressions](named-expressions.md), by using HyperFormula's [`TRUE()`](built-in-functions.md#logical) and [`FALSE()`](built-in-functions.md#logical) functions.
 
 ```js
 hfInstance.addNamedExpression('TRUE', '=TRUE()');

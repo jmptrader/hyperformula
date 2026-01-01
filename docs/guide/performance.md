@@ -17,9 +17,6 @@ not be used despite the option `useColumnIndex` enabled when  using
 
 Leaving this option disabled will cause the engine to use binary
 search when dealing with sorted data, and the naive approach otherwise.
-However, binary search will not be used if the size of the data being
-searched is below a given threshold, which can be customized using the
-`binarySearchThreshold` option in the configuration.
 
 ## Address mapping strategies
 
@@ -48,7 +45,7 @@ between cells in the sheet, we recalculate only the cells affected
 by the update.
 
 Sometimes, a simple change can cause recalculation of a large part
-of the sheet, e.g. when the modified cell is at the very beginning
+of the sheet, e.g., when the modified cell is at the very beginning
 of the dependency chain or when there are many
 [volatile functions](volatile-functions.md) in the worksheet.
 In such a case you may want to postpone the recalculation.

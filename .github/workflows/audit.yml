@@ -1,4 +1,6 @@
 name: Security
+permissions:
+  contents: read
 
 on:
   pull_request:
@@ -16,7 +18,7 @@ jobs:
   audit:
     strategy:
       matrix:
-        node-version: [ '16' ]
+        node-version: [ '22' ]
         os: [ 'ubuntu-latest' ]
     name: audit
     runs-on: ${{ matrix.os }}
@@ -30,4 +32,4 @@ jobs:
 
       - name: Run audit
         run: |
-          npm audit --omit='dev'
+          npm run audit

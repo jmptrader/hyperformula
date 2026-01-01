@@ -9,7 +9,7 @@ register the language like so:
 
 ```javascript
 // import the French language pack
-import frFR from 'hyperformula/es/i18n/languages/frFR';
+import frFR from 'hyperformula/i18n/languages/frFR';
 
 // register the language
 HyperFormula.registerLanguage('frFR', frFR);
@@ -17,11 +17,11 @@ HyperFormula.registerLanguage('frFR', frFR);
 
 ::: tip
 To import the language packs, use the module-system-specific dedicated bundles at:
-* **ES**: `hyperformula/es/i18n/languages/`
-* **CommonJS**: `hyperformula/commonjs/i18n/languages/`
+* **ES**: `hyperformula/i18n/languages/`
+* **CommonJS**: `hyperformula/i18n/languages/`
 * **UMD**: `hyperformula/dist/languages/`
 
-For the UMD build, the languages are accessible through `HyperFormula.languages`, e.g. `HyperFormula.languages.frFR`.
+For the UMD build, the languages are accessible through `HyperFormula.languages`, e.g., `HyperFormula.languages.frFR`.
 :::
 
 Then set it inside it the [configuration options](configuration-options.md):
@@ -69,6 +69,41 @@ errors: {
 }
 ```
 
+## Creating a custom language pack
+
+If your desired language is not in the list of supported languages, you can create a custom language pack:
+
+```javascript
+// Create a language pack object
+const spanish = {
+  errors: {
+    NAME: '#¿NOMBRE?',
+    // ...
+  },
+  functions: {
+    SUM: 'SUMA',
+    IF: 'SI',
+    // ...
+  },
+  langCode: 'es', // Your custom language code
+  ui: {
+    NEW_SHEET_PREFIX: 'Sheet',
+  },
+};
+
+// Register your language
+HyperFormula.registerLanguage('es', spanish);
+
+// Use it in your configuration
+const hf = HyperFormula.buildEmpty({
+  language: 'es'
+});
+```
+
+::: tip
+You can use an existing language pack as a template. Check the [language files in the repository](https://github.com/handsontable/hyperformula/tree/master/src/i18n/languages) to see complete examples with all available functions.
+:::
+
 ## Localizing custom functions
 
 You can localize your custom functions as well. For details, see the [Custom functions](custom-functions.md#function-name-translations) guide.
@@ -96,10 +131,14 @@ You can localize your custom functions as well. For details, see the [Custom fun
 
 ## Demo
 
-<iframe
-  src="https://codesandbox.io/embed/github/handsontable/hyperformula-demos/tree/2.6.x/localizing-functions?autoresize=1&fontsize=11&hidenavigation=1&theme=light&view=preview"
-  style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;"
-  title="handsontable/hyperformula-demos: localizing-functions"
-  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
-  sandbox="allow-autoplay allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts">
-</iframe>
+::: example #example1 --html 1 --css 2 --js 3 --ts 4
+
+@[code](@/docs/examples/localizing-functions/example1.html)
+
+@[code](@/docs/examples/localizing-functions/example1.css)
+
+@[code](@/docs/examples/localizing-functions/example1.js)
+
+@[code](@/docs/examples/localizing-functions/example1.ts)
+
+:::

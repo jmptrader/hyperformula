@@ -27,7 +27,7 @@ an object that declares the functions provided by this plugin.
 
 The name of that object becomes the ID by which
 [translations](#function-name-translations), [aliases](#function-aliases), and
-other elements refer to your function. Make the ID unique among all HyperFormula
+other elements reference your function. Make the ID unique among all HyperFormula
 functions ([built-in](built-in-functions.md#list-of-available-functions) and
 custom).
 
@@ -258,12 +258,12 @@ export class MyCustomPlugin extends FunctionPlugin {
 
 A function that returns an array will cause the `VALUE!` error unless you also
 declare a companion method for the array size. To do that, provide the
-`arraySizeMethod` that calculates the size of the result array based on the
+`sizeOfResultArrayMethod` that calculates the size of the result array based on the
 function arguments and returns an instance of the
 [`ArraySize` class](../api/classes/arraysize.md).
 
 ::: tip
-When you use your custom function in a formula, `arraySizeMethod` is triggered every time the formula changes, but not when the dependencies of the formula change.
+When you use your custom function in a formula, `sizeOfResultArrayMethod` is triggered every time the formula changes, but not when the dependencies of the formula change.
 This can cause unexpected behavior if the size of the result array depends on the values in the referenced cells.
 :::
 
@@ -286,7 +286,7 @@ export class MyCustomPlugin extends FunctionPlugin {
 MyCustomPlugin.implementedFunctions = {
   DOUBLE_RANGE: {
     method: 'doubleRange',
-    arraySizeMethod: 'doubleRangeResultArraySize',
+    sizeOfResultArrayMethod: 'doubleRangeResultArraySize',
     parameters: [{ argumentType: FunctionArgumentType.RANGE }],
   },
 };
@@ -363,11 +363,11 @@ This demo contains the implementation of both the
 [`DOUBLE_RANGE`](#advanced-custom-function-example) custom functions.
 
 <iframe
-  src="https://codesandbox.io/embed/github/handsontable/hyperformula-demos/tree/2.6.x/custom-functions?autoresize=1&fontsize=11&hidenavigation=1&theme=light&view=preview"
-  style="width:100%; height:300px; border:0; border-radius: 4px; overflow:hidden;"
-  title="handsontable/hyperformula-demos: custom-functions"
+  :src="`https://codesandbox.io/embed/github/handsontable/hyperformula-demos/tree/3.1.x/custom-functions?autoresize=1&fontsize=11&hidenavigation=1&theme=light&view=preview&v=${$page.buildDateURIEncoded}`"
+  style="width:100%; height:1070px; border:0; border-radius: 4px; overflow:hidden;"
+  title="handsontable/hyperformula-demos: react-demo"
   allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
-  sandbox="allow-autoplay allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts">
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts">
 </iframe>
 
 ## Function options
@@ -378,15 +378,17 @@ You can set the following options for your function:
 |-------------------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `method` (required)                 | String  | Name of the method that implements the custom function logic.                                                                                                                                                                                 |
 | `parameters`                        | Array   | Specification of the arguments accepted by the function and their [validation options](#argument-validation-options).                                                                                                                         |
-| `arraySizeMethod`                   | String  | Name of the method that calculates the size of the result array. Not required for functions that never return an array.                                                                                                                       |
+| `sizeOfResultArrayMethod`                   | String  | Name of the method that calculates the size of the result array. Not required for functions that never return an array.                                                                                                                       |
 | `returnNumberType`                  | String  | If the function returns a numeric value, this option indicates how to interpret the returned number.<br/>Possible values: `NUMBER_RAW, NUMBER_DATE, NUMBER_TIME, NUMBER_DATETIME, NUMBER_CURRENCY, NUMBER_PERCENT`.<br/>Default: `NUMBER_RAW` |
 | `repeatLastArgs`                    | Number  | For functions with a variable number of arguments: sets how many last arguments can be repeated indefinitely.<br/>Default: `0`                                                                                                                |
 | `expandRanges`                      | Boolean | `true`: ranges in the function's arguments are inlined to (possibly multiple) scalar arguments.<br/>Default: `false`                                                                                                                          |
 | `isVolatile`                        | Boolean | `true`: the function is [volatile](volatile-functions.md).<br/>Default: `false`                                                                                                                                                               |
 | `isDependentOnSheetStructureChange` | Boolean | `true`: the function gets recalculated with each sheet shape change (e.g., when adding/removing rows or columns).<br/>Default: `false`                                                                                                        |
 | `doesNotNeedArgumentsToBeComputed`  | Boolean | `true`: the function treats reference or range arguments as arguments that don't create dependency (other arguments are properly evaluated).<br/>Default: `false`                                                                             |
-| `arrayFunction`                     | Boolean | `true`: the function enables the [array arithmetic mode](arrays.md) in its arguments and nested expressions.<br/>Default: `false`                                                                                                             |
+| `enableArrayArithmeticForArguments`                     | Boolean | `true`: the function enables the [array arithmetic mode](arrays.md) in its arguments and nested expressions.<br/>Default: `false`                                                                                                             |
 | `vectorizationForbidden`            | Boolean | `true`: the function will never get [vectorized](arrays.md#passing-arrays-to-scalar-functions-vectorization).<br/>Default: `false`                                                                                                            |
+| `arraySizeMethod`                     | String | Deprecated; Use `sizeOfResultArrayMethod` instead. |
+| `arrayFunction`                     | Boolean | Deprecated; Use `enableArrayArithmeticForArguments` instead. |
 
 You can set the options in the static `implementedFunctions` property of your
 function plugin:
@@ -400,14 +402,14 @@ MyCustomPlugin.implementedFunctions = {
         // your argument validation options
       },
     ],
-    arraySizeMethod: 'myArraySizeMethod',
+    sizeOfResultArrayMethod: 'myArraySizeMethod',
     returnNumberType: 'NUMBER_RAW',
     repeatLastArgs: 0,
     expandRanges: false,
     isVolatile: false,
     isDependentOnSheetStructureChange: false,
     doesNotNeedArgumentsToBeComputed: false,
-    arrayFunction: false,
+    enableArrayArithmeticForArguments: false,
     vectorizationForbidden: false,
   },
 };

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
 import {
@@ -21,7 +21,7 @@ import {
   cellAddressFromString,
   columnAddressFromString,
   rowAddressFromString,
-  SheetMappingFn,
+  ResolveSheetReferenceFn,
 } from './addressRepresentationConverters'
 import {
   ArrayAst,
@@ -130,17 +130,26 @@ export class FormulaParser extends EmbeddedActionsParser {
 
   private customParsingError?: ParsingError
 
-  private readonly sheetMapping: SheetMappingFn
-
   /**
    * Cache for positiveAtomicExpression alternatives
    */
   private atomicExpCache: Maybe<OrArg>
+
+  constructor(
+    lexerConfig: LexerConfig,
+    private readonly resolveSheetReference: ResolveSheetReferenceFn,
+  ) {
+    super(lexerConfig.allTokens, {outputCst: false, maxLookahead: 7})
+    this.lexerConfig = lexerConfig
+    this.formulaAddress = simpleCellAddress(0, 0, 0)
+    this.performSelfAnalysis()
+  }
+
   private booleanExpressionOrEmpty: AstRule = this.RULE('booleanExpressionOrEmpty', () => {
     return this.OR([
       {ALT: () => this.SUBRULE(this.booleanExpression)},
       {ALT: EMPTY_ALT(buildEmptyArgAst())}
-    ])
+    ]) as Ast
   })
 
   /**
@@ -195,13 +204,13 @@ export class FormulaParser extends EmbeddedActionsParser {
   })
 
   /**
-   * Rule for column range, e.g. A:B, Sheet1!A:B, Sheet1!A:Sheet1!B
+   * Rule for column range, e.g., A:B, Sheet1!A:B, Sheet1!A:Sheet1!B
    */
   private columnRangeExpression: AstRule = this.RULE('columnRangeExpression', () => {
     const range = this.CONSUME(ColumnRange) as ExtendedToken
     const [startImage, endImage] = range.image.split(':')
-    const firstAddress = this.ACTION(() => columnAddressFromString(this.sheetMapping, startImage, this.formulaAddress))
-    const secondAddress = this.ACTION(() => columnAddressFromString(this.sheetMapping, endImage, this.formulaAddress))
+    const firstAddress = this.ACTION(() => columnAddressFromString(startImage, this.formulaAddress, this.resolveSheetReference))
+    const secondAddress = this.ACTION(() => columnAddressFromString(endImage, this.formulaAddress, this.resolveSheetReference))
 
     if (firstAddress === undefined || secondAddress === undefined) {
       return buildCellErrorAst(new CellError(ErrorType.REF))
@@ -221,13 +230,13 @@ export class FormulaParser extends EmbeddedActionsParser {
   })
 
   /**
-   * Rule for row range, e.g. 1:2, Sheet1!1:2, Sheet1!1:Sheet1!2
+   * Rule for row range, e.g., 1:2, Sheet1!1:2, Sheet1!1:Sheet1!2
    */
   private rowRangeExpression: AstRule = this.RULE('rowRangeExpression', () => {
     const range = this.CONSUME(RowRange) as ExtendedToken
     const [startImage, endImage] = range.image.split(':')
-    const firstAddress = this.ACTION(() => rowAddressFromString(this.sheetMapping, startImage, this.formulaAddress))
-    const secondAddress = this.ACTION(() => rowAddressFromString(this.sheetMapping, endImage, this.formulaAddress))
+    const firstAddress = this.ACTION(() => rowAddressFromString(startImage, this.formulaAddress, this.resolveSheetReference))
+    const secondAddress = this.ACTION(() => rowAddressFromString(endImage, this.formulaAddress, this.resolveSheetReference))
 
     if (firstAddress === undefined || secondAddress === undefined) {
       return buildCellErrorAst(new CellError(ErrorType.REF))
@@ -247,13 +256,14 @@ export class FormulaParser extends EmbeddedActionsParser {
   })
 
   /**
-   * Rule for cell reference expression (e.g. A1, $A1, A$1, $A$1, $Sheet42!A$17)
+   * Rule for cell reference expression (e.g., A1, $A1, A$1, $A$1, $Sheet42!A$17)
    */
   private cellReference: AstRule = this.RULE('cellReference', () => {
     const cell = this.CONSUME(CellReference) as ExtendedToken
     const address = this.ACTION(() => {
-      return cellAddressFromString(this.sheetMapping, cell.image, this.formulaAddress)
+      return cellAddressFromString(cell.image, this.formulaAddress, this.resolveSheetReference)
     })
+
     if (address === undefined) {
       return buildErrorWithRawInputAst(cell.image, new CellError(ErrorType.REF), cell.leadingWhitespace)
     } else if (address.exceedsSheetSizeLimits(this.lexerConfig.maxColumns, this.lexerConfig.maxRows)) {
@@ -270,10 +280,10 @@ export class FormulaParser extends EmbeddedActionsParser {
     const end = this.CONSUME(CellReference) as ExtendedToken
 
     const startAddress = this.ACTION(() => {
-      return cellAddressFromString(this.sheetMapping, start.image, this.formulaAddress)
+      return cellAddressFromString(start.image, this.formulaAddress, this.resolveSheetReference)
     })
     const endAddress = this.ACTION(() => {
-      return cellAddressFromString(this.sheetMapping, end.image, this.formulaAddress)
+      return cellAddressFromString(end.image, this.formulaAddress, this.resolveSheetReference)
     })
 
     if (startAddress === undefined || endAddress === undefined) {
@@ -306,7 +316,7 @@ export class FormulaParser extends EmbeddedActionsParser {
         ALT: () => {
           const offsetProcedure = this.SUBRULE(this.offsetProcedureExpression)
           const startAddress = this.ACTION(() => {
-            return cellAddressFromString(this.sheetMapping, start.image, this.formulaAddress)
+            return cellAddressFromString(start.image, this.formulaAddress, this.resolveSheetReference)
           })
           if (startAddress === undefined) {
             return buildCellErrorAst(new CellError(ErrorType.REF))
@@ -318,11 +328,11 @@ export class FormulaParser extends EmbeddedActionsParser {
           }
         },
       },
-    ])
+    ]) as Ast
   })
 
   /**
-   * Rule for cell ranges (e.g. A1:B$3, A1:OFFSET())
+   * Rule for cell ranges (e.g., A1:B$3, A1:OFFSET())
    */
   private cellRangeExpression: AstRule = this.RULE('cellRangeExpression', () => {
     const start = this.CONSUME(CellReference)
@@ -337,7 +347,7 @@ export class FormulaParser extends EmbeddedActionsParser {
     const end = this.CONSUME(CellReference) as ExtendedToken
 
     const endAddress = this.ACTION(() => {
-      return cellAddressFromString(this.sheetMapping, end.image, this.formulaAddress)
+      return cellAddressFromString(end.image, this.formulaAddress, this.resolveSheetReference)
     })
 
     if (endAddress === undefined) {
@@ -371,7 +381,7 @@ export class FormulaParser extends EmbeddedActionsParser {
           }
         },
       },
-    ])
+    ]) as Ast
   })
 
   /**
@@ -448,16 +458,8 @@ export class FormulaParser extends EmbeddedActionsParser {
       {
         ALT: () => this.SUBRULE(this.parenthesisExpression)
       }
-    ])
+    ]) as Ast
   })
-
-  constructor(lexerConfig: LexerConfig, sheetMapping: SheetMappingFn) {
-    super(lexerConfig.allTokens, {outputCst: false, maxLookahead: 7})
-    this.lexerConfig = lexerConfig
-    this.sheetMapping = sheetMapping
-    this.formulaAddress = simpleCellAddress(0, 0, 0)
-    this.performSelfAnalysis()
-  }
 
   /**
    * Parses tokenized formula and builds abstract syntax tree
@@ -556,7 +558,7 @@ export class FormulaParser extends EmbeddedActionsParser {
           }
         },
       },
-    ]))
+    ])) as Ast
   })
 
   private rightUnaryOpAtomicExpression: AstRule = this.RULE('rightUnaryOpAtomicExpression', () => {
@@ -595,7 +597,7 @@ export class FormulaParser extends EmbeddedActionsParser {
       {
         ALT: () => this.SUBRULE2(this.rightUnaryOpAtomicExpression),
       },
-    ])
+    ]) as Ast
   })
 
   /**
@@ -621,7 +623,7 @@ export class FormulaParser extends EmbeddedActionsParser {
   })
 
   /**
-   * Rule for multiplication category operators (e.g. 1 * A1, 1 / A1)
+   * Rule for multiplication category operators (e.g., 1 * A1, 1 / A1)
    */
   private multiplicationExpression: AstRule = this.RULE('multiplicationExpression', () => {
     let lhs: Ast = this.SUBRULE(this.powerExpression)
@@ -645,7 +647,7 @@ export class FormulaParser extends EmbeddedActionsParser {
   })
 
   /**
-   * Rule for addition category operators (e.g. 1 + A1, 1 - A1)
+   * Rule for addition category operators (e.g., 1 + A1, 1 - A1)
    */
   private additionExpression: AstRule = this.RULE('additionExpression', () => {
     let lhs: Ast = this.SUBRULE(this.multiplicationExpression)
@@ -669,7 +671,7 @@ export class FormulaParser extends EmbeddedActionsParser {
   })
 
   /**
-   * Rule for concatenation operator expression (e.g. "=" & A1)
+   * Rule for concatenation operator expression (e.g., "=" & A1)
    */
   private concatenateExpression: AstRule = this.RULE('concatenateExpression', () => {
     let lhs: Ast = this.SUBRULE(this.additionExpression)
@@ -684,7 +686,7 @@ export class FormulaParser extends EmbeddedActionsParser {
   })
 
   /**
-   * Rule for boolean expression (e.g. 1 <= A1)
+   * Rule for boolean expression (e.g., 1 <= A1)
    */
   private booleanExpression: AstRule = this.RULE('booleanExpression', () => {
     let lhs: Ast = this.SUBRULE(this.concatenateExpression)
@@ -817,6 +819,7 @@ export class FormulaParser extends EmbeddedActionsParser {
       cellArg.reference.col + colShift,
       cellArg.reference.row + rowShift,
       cellArg.reference.type,
+      cellArg.reference.sheet ?? undefined,
     )
 
     let absoluteCol = topLeftCorner.col
@@ -828,7 +831,6 @@ export class FormulaParser extends EmbeddedActionsParser {
     }
     if (cellArg.reference.type === CellReferenceType.CELL_REFERENCE_RELATIVE
       || cellArg.reference.type === CellReferenceType.CELL_REFERENCE_ABSOLUTE_ROW) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       absoluteCol = absoluteCol + this.formulaAddress.col
     }
 
@@ -842,8 +844,10 @@ export class FormulaParser extends EmbeddedActionsParser {
         topLeftCorner.col + width - 1,
         topLeftCorner.row + height - 1,
         topLeftCorner.type,
+        topLeftCorner.sheet,
       )
-      return buildCellRangeAst(topLeftCorner, bottomRightCorner, RangeSheetReferenceType.RELATIVE)
+      const rangeSheetReferenceType = cellArg.reference.sheet == null ? RangeSheetReferenceType.RELATIVE : RangeSheetReferenceType.BOTH_ABSOLUTE
+      return buildCellRangeAst(topLeftCorner, bottomRightCorner, rangeSheetReferenceType)
     }
   }
 

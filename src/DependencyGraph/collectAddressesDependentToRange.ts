@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
 import {AbsoluteCellRange} from '../AbsoluteCellRange'
@@ -9,7 +9,7 @@ import {FunctionRegistry} from '../interpreter/FunctionRegistry'
 import {LazilyTransformingAstService} from '../LazilyTransformingAstService'
 import {AddressDependency, Ast, collectDependencies} from '../parser'
 import {DependencyGraph} from './DependencyGraph'
-import {FormulaVertex} from './FormulaCellVertex'
+import {FormulaVertex} from './FormulaVertex'
 import {RangeVertex} from './RangeVertex'
 import {Vertex} from './Vertex'
 

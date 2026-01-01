@@ -1,10 +1,10 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
 import {AbsoluteCellRange} from './AbsoluteCellRange'
-import {invalidSimpleCellAddress, simpleCellAddress, SimpleCellAddress} from './Cell'
+import {isColOrRowInvalid, simpleCellAddress, SimpleCellAddress} from './Cell'
 import {RawCellContent} from './CellContentParser'
 import {Config} from './Config'
 import {DependencyGraph} from './DependencyGraph'
@@ -119,7 +119,7 @@ export class ClipboardOperations {
       return
     }
 
-    if (invalidSimpleCellAddress(destinationLeftCorner) ||
+    if (isColOrRowInvalid(destinationLeftCorner) ||
       !this.dependencyGraph.sheetMapping.hasSheetWithId(destinationLeftCorner.sheet)) {
       throw new InvalidArgumentsError('a valid target address.')
     }

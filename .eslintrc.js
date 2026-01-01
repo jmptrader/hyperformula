@@ -6,7 +6,13 @@ module.exports = {
     '@typescript-eslint',
     'license-header',
     'jsdoc',
+    'jasmine',
+    'jest',
   ],
+  env: {
+    jasmine: true,
+    'jest/globals': true,
+  },
   parserOptions: {
     tsconfigRootDir: __dirname,
     project: './tsconfig.test.json',
@@ -17,6 +23,9 @@ module.exports = {
     'plugin:@typescript-eslint/eslint-recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    'plugin:jasmine/recommended',
+    'plugin:jest/recommended',
+    'plugin:jest/style',
   ],
   rules: {
     // Automatic fixers
@@ -90,7 +99,6 @@ module.exports = {
     'jsdoc/empty-tags': 'warn',
     'jsdoc/implements-on-classes': 'warn',
     'jsdoc/multiline-blocks': 'warn',
-    'jsdoc/tag-lines': 'warn',
     'jsdoc/no-multi-asterisks': 'warn',
     'jsdoc/require-param-description': 'warn',
     'jsdoc/require-param-name': 'warn',
@@ -104,8 +112,9 @@ module.exports = {
     'jsdoc/require-yields-check': 'warn',
     'jsdoc/valid-types': 'warn',
     'jsdoc/require-jsdoc': ['warn', {
+      checkConstructors: false,
       require: {
-        ArrowFunctionExpression: true,
+        ArrowFunctionExpression: false,
         ClassDeclaration: true,
         ClassExpression: true,
         FunctionDeclaration: true,
@@ -113,6 +122,13 @@ module.exports = {
         MethodDefinition: true,
       }
     }],
+    'jest/no-jasmine-globals': 'off',
+    'jest/no-alias-methods': 'off',
+    'jest/no-conditional-expect': 'warn',
+    'jest/no-standalone-expect': 'warn',
+    'jest/no-test-prefixes': 'off',
+    'jest/prefer-to-be': 'warn',
+    'jest/prefer-to-have-length': 'off',
   },
   overrides: [
     {
@@ -127,5 +143,11 @@ module.exports = {
         'sort-keys': ['error', 'asc'],
       }
     },
+    {
+      files: ['**/*.spec.ts'],
+      rules: {
+        '@typescript-eslint/no-non-null-assertion': 'off',
+      }
+    }
   ],
 }

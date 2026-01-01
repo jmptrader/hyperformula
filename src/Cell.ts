@@ -1,10 +1,10 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
-import {ArrayVertex, CellVertex, FormulaCellVertex, ParsingErrorVertex, ValueCellVertex} from './DependencyGraph'
-import {FormulaVertex} from './DependencyGraph/FormulaCellVertex'
+import {ArrayFormulaVertex, CellVertex, ScalarFormulaVertex, ParsingErrorVertex, ValueCellVertex} from './DependencyGraph'
+import {FormulaVertex} from './DependencyGraph/FormulaVertex'
 import {ErrorMessage} from './error-message'
 import {
   EmptyValue,
@@ -59,14 +59,14 @@ export enum CellType {
 }
 
 export const getCellType = (vertex: Maybe<CellVertex>, address: SimpleCellAddress): CellType => {
-  if (vertex instanceof ArrayVertex) {
+  if (vertex instanceof ArrayFormulaVertex) {
     if (vertex.isLeftCorner(address)) {
       return CellType.ARRAYFORMULA
     } else {
       return CellType.ARRAY
     }
   }
-  if (vertex instanceof FormulaCellVertex || vertex instanceof ParsingErrorVertex) {
+  if (vertex instanceof ScalarFormulaVertex || vertex instanceof ParsingErrorVertex) {
     return CellType.FORMULA
   }
   if (vertex instanceof ValueCellVertex) {
@@ -154,8 +154,12 @@ export class CellError {
   ) {
   }
 
-  public static parsingError() {
-    return new CellError(ErrorType.ERROR, ErrorMessage.ParseError)
+  /**
+   * Returns a CellError with a given message.
+   * @param {string} detailedMessage - message to be displayed
+   */
+  public static parsingError(detailedMessage?: string): CellError {
+    return new CellError(ErrorType.ERROR, `${ErrorMessage.ParseError}${detailedMessage ? ' ' + detailedMessage : ''}`)
   }
 
   public attachRootVertex(vertex: FormulaVertex): CellError {
@@ -192,19 +196,27 @@ export interface SimpleCellAddress {
 }
 
 export const simpleCellAddress = (sheet: number, col: number, row: number): SimpleCellAddress => ({sheet, col, row})
-export const invalidSimpleCellAddress = (address: SimpleCellAddress): boolean => (address.col < 0 || address.row < 0)
+
+/**
+ * Checks if the column or row id is negative.
+ */
+export const isColOrRowInvalid = (address: SimpleCellAddress): boolean => (address.col < 0 || address.row < 0)
+
 export const movedSimpleCellAddress = (address: SimpleCellAddress, toSheet: number, toRight: number, toBottom: number): SimpleCellAddress => {
   return simpleCellAddress(toSheet, address.col + toRight, address.row + toBottom)
 }
 
 export const addressKey = (address: SimpleCellAddress) => `${address.sheet},${address.row},${address.col}`
 
-export function isSimpleCellAddress(obj: any): obj is SimpleCellAddress {
-  if (obj && (typeof obj === 'object' || typeof obj === 'function')) {
-    return 'col' in obj && typeof obj.col === 'number' && 'row' in obj && typeof obj.row === 'number' && 'sheet' in obj && typeof obj.sheet === 'number'
-  } else {
-    return false
-  }
+/**
+ * Checks if the object is a simple cell address.
+ */
+export function isSimpleCellAddress(obj: unknown): obj is SimpleCellAddress {
+  return obj
+    && (typeof obj === 'object' || typeof obj === 'function')
+    && typeof (obj as SimpleCellAddress)?.sheet === 'number'
+    && typeof (obj as SimpleCellAddress)?.col === 'number'
+    && typeof (obj as SimpleCellAddress)?.row === 'number'
 }
 
 export const absoluteSheetReference = (address: AddressWithSheet, baseAddress: SimpleCellAddress): number => {

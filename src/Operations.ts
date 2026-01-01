@@ -1,38 +1,38 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
-import {AbsoluteCellRange} from './AbsoluteCellRange'
-import {absolutizeDependencies, filterDependenciesOutOfScope} from './absolutizeDependencies'
-import {ArraySize, ArraySizePredictor} from './ArraySize'
-import {equalSimpleCellAddress, invalidSimpleCellAddress, simpleCellAddress, SimpleCellAddress} from './Cell'
-import {CellContent, CellContentParser, RawCellContent} from './CellContentParser'
-import {ClipboardCell, ClipboardCellType} from './ClipboardOperations'
-import {Config} from './Config'
-import {ContentChanges} from './ContentChanges'
-import {ColumnRowIndex} from './CrudOperations'
+import { AbsoluteCellRange } from './AbsoluteCellRange'
+import { absolutizeDependencies, filterDependenciesOutOfScope } from './absolutizeDependencies'
+import { ArraySize, ArraySizePredictor } from './ArraySize'
+import { equalSimpleCellAddress, isColOrRowInvalid, simpleCellAddress, SimpleCellAddress } from './Cell'
+import { CellContent, CellContentParser, RawCellContent } from './CellContentParser'
+import { ClipboardCell, ClipboardCellType } from './ClipboardOperations'
+import { Config } from './Config'
+import { ContentChanges } from './ContentChanges'
+import { ColumnRowIndex } from './CrudOperations'
 import {
   AddressMapping,
-  ArrayVertex,
+  ArrayFormulaVertex,
   CellVertex,
   DependencyGraph,
   EmptyCellVertex,
-  FormulaCellVertex,
+  ScalarFormulaVertex,
   ParsingErrorVertex,
   SheetMapping,
   SparseStrategy,
-  ValueCellVertex
+  ValueCellVertex,
 } from './DependencyGraph'
-import {FormulaVertex} from './DependencyGraph/FormulaCellVertex'
-import {RawAndParsedValue} from './DependencyGraph/ValueCellVertex'
-import {AddColumnsTransformer} from './dependencyTransformers/AddColumnsTransformer'
-import {AddRowsTransformer} from './dependencyTransformers/AddRowsTransformer'
-import {CleanOutOfScopeDependenciesTransformer} from './dependencyTransformers/CleanOutOfScopeDependenciesTransformer'
-import {MoveCellsTransformer} from './dependencyTransformers/MoveCellsTransformer'
-import {RemoveColumnsTransformer} from './dependencyTransformers/RemoveColumnsTransformer'
-import {RemoveRowsTransformer} from './dependencyTransformers/RemoveRowsTransformer'
-import {RemoveSheetTransformer} from './dependencyTransformers/RemoveSheetTransformer'
+import { FormulaVertex } from './DependencyGraph/FormulaVertex'
+import { RawAndParsedValue, ValueCellVertexValue } from './DependencyGraph/ValueCellVertex'
+import { AddColumnsTransformer } from './dependencyTransformers/AddColumnsTransformer'
+import { AddRowsTransformer } from './dependencyTransformers/AddRowsTransformer'
+import { CleanOutOfScopeDependenciesTransformer } from './dependencyTransformers/CleanOutOfScopeDependenciesTransformer'
+import { MoveCellsTransformer } from './dependencyTransformers/MoveCellsTransformer'
+import { RemoveColumnsTransformer } from './dependencyTransformers/RemoveColumnsTransformer'
+import { RemoveRowsTransformer } from './dependencyTransformers/RemoveRowsTransformer'
+import { RenameSheetTransformer } from './dependencyTransformers/RenameSheetTransformer'
 import {
   InvalidArgumentsError,
   NamedExpressionDoesNotExistError,
@@ -41,21 +41,21 @@ import {
   SourceLocationHasArrayError,
   TargetLocationHasArrayError
 } from './errors'
-import {EmptyValue, getRawValue} from './interpreter/InterpreterValue'
-import {LazilyTransformingAstService} from './LazilyTransformingAstService'
-import {ColumnSearchStrategy} from './Lookup/SearchStrategy'
+import { EmptyValue, getRawValue } from './interpreter/InterpreterValue'
+import { LazilyTransformingAstService } from './LazilyTransformingAstService'
+import { ColumnSearchStrategy } from './Lookup/SearchStrategy'
+import { Maybe } from './Maybe'
 import {
   doesContainRelativeReferences,
   InternalNamedExpression,
   NamedExpressionOptions,
   NamedExpressions
 } from './NamedExpressions'
-import {NamedExpressionDependency, ParserWithCaching, RelativeDependency} from './parser'
-import {ParsingError} from './parser/Ast'
-import {ParsingResult} from './parser/ParserWithCaching'
-import {findBoundaries, Sheet} from './Sheet'
-import {ColumnsSpan, RowsSpan} from './Span'
-import {Statistics, StatType} from './statistics'
+import { NamedExpressionDependency, ParserWithCaching, ParsingErrorType, RelativeDependency } from './parser'
+import { ParsingError } from './parser/Ast'
+import { ParsingResult } from './parser/ParserWithCaching'
+import { ColumnsSpan, RowsSpan } from './Span'
+import { Statistics, StatType } from './statistics'
 
 export class RemoveRowsCommand {
   constructor(
@@ -156,8 +156,8 @@ export interface MoveCellsResult {
 
 export class Operations {
   private changes: ContentChanges = ContentChanges.empty()
-  private maxRows: number
-  private maxColumns: number
+  private readonly maxRows: number
+  private readonly maxColumns: number
 
   constructor(
     config: Config,
@@ -217,43 +217,89 @@ export class Operations {
     return columnsRemovals
   }
 
-  public removeSheet(sheetId: number) {
-    this.dependencyGraph.removeSheet(sheetId)
-
-    let version: number
-    this.stats.measure(StatType.TRANSFORM_ASTS, () => {
-      const transformation = new RemoveSheetTransformer(sheetId)
-      transformation.performEagerTransformations(this.dependencyGraph, this.parser)
-      version = this.lazilyTransformingAstService.addTransformation(transformation)
-    })
-
-    this.sheetMapping.removeSheet(sheetId)
-    this.columnSearch.removeSheet(sheetId)
-    const scopedNamedExpressions = this.namedExpressions.getAllNamedExpressionsForScope(sheetId).map(
-      (namedexpression) => this.removeNamedExpression(namedexpression.normalizeExpressionName(), sheetId)
-    )
-    return {version: version!, scopedNamedExpressions}
-  }
-
-  public removeSheetByName(sheetName: string) {
-    const sheetId = this.sheetMapping.fetch(sheetName)
-    return this.removeSheet(sheetId)
-  }
-
+  /**
+   * Clears the sheet content.
+   */
   public clearSheet(sheetId: number) {
     this.dependencyGraph.clearSheet(sheetId)
     this.columnSearch.removeSheet(sheetId)
   }
 
-  public addSheet(name?: string) {
+  /**
+   * Adds a new sheet to the workbook.
+   */
+  public addSheet(name?: string): { sheetName: string, sheetId: number } {
     const sheetId = this.sheetMapping.addSheet(name)
-    const sheet: Sheet = []
-    this.dependencyGraph.addressMapping.autoAddSheet(sheetId, findBoundaries(sheet))
-    return this.sheetMapping.fetchDisplayName(sheetId)
+    this.dependencyGraph.addSheet(sheetId)
+    return { sheetName: this.sheetMapping.getSheetNameOrThrowError(sheetId), sheetId }
   }
 
-  public renameSheet(sheetId: number, newName: string) {
-    return this.sheetMapping.renameSheet(sheetId, newName)
+  /**
+   * Adds a sheet with a specific ID for redo operations.
+   */
+  public addSheetWithId(sheetId: number, name: string): void {
+    this.sheetMapping.addSheetWithId(sheetId, name)
+    this.dependencyGraph.addSheet(sheetId)
+  }
+
+  /**
+   * Adds a placeholder sheet with a specific ID for undo operations.
+   * Used to restore previously merged placeholder sheets.
+   *
+   * Note: Unlike `addSheetWithId`, this does NOT call `dependencyGraph.addSheet()`
+   * because placeholders don't need dirty marking or strategy changes - they only
+   * need to exist in the mappings so formulas can reference them again.
+   */
+  public addPlaceholderSheetWithId(sheetId: number, name: string): void {
+    this.sheetMapping.addPlaceholderWithId(sheetId, name)
+    this.addressMapping.addSheetStrategyPlaceholderIfNotExists(sheetId)
+  }
+
+  /**
+   * Removes a sheet from the workbook.
+   */
+  public removeSheet(sheetId: number): [InternalNamedExpression, ClipboardCell][] {
+    this.dependencyGraph.removeSheet(sheetId)
+    this.columnSearch.removeSheet(sheetId)
+    const scopedNamedExpressions = this.namedExpressions.getAllNamedExpressionsForScope(sheetId).map(
+      (namedExpression) => this.removeNamedExpression(namedExpression.normalizeExpressionName(), sheetId)
+    )
+    return scopedNamedExpressions
+  }
+
+  /**
+   * Removes a sheet from the workbook by name.
+   */
+  public removeSheetByName(sheetName: string) {
+    const sheetId = this.sheetMapping.getSheetIdOrThrowError(sheetName)
+    return this.removeSheet(sheetId)
+  }
+
+  /**
+   * Renames a sheet in the workbook.
+   */
+  public renameSheet(sheetId: number, newName: string): {
+    previousDisplayName: Maybe<string>,
+    version?: number,
+    mergedPlaceholderSheetId?: number,
+  } {
+    const { previousDisplayName, mergedWithPlaceholderSheet } = this.sheetMapping.renameSheet(sheetId, newName)
+
+    let version: number | undefined
+    if (mergedWithPlaceholderSheet !== undefined) {
+      this.dependencyGraph.mergeSheets(sheetId, mergedWithPlaceholderSheet)
+      this.stats.measure(StatType.TRANSFORM_ASTS, () => {
+        const transformation = new RenameSheetTransformer(sheetId, mergedWithPlaceholderSheet)
+        transformation.performEagerTransformations(this.dependencyGraph, this.parser)
+        version = this.lazilyTransformingAstService.addTransformation(transformation)
+      })
+    }
+
+    return {
+      previousDisplayName,
+      version,
+      mergedPlaceholderSheetId: mergedWithPlaceholderSheet,
+    }
   }
 
   public moveRows(sheet: number, startRow: number, numberOfRows: number, targetRow: number): number {
@@ -311,7 +357,7 @@ export class Operations {
     const valuesToMove = this.dependencyGraph.rawValuesFromRange(sourceRange)
     this.columnSearch.moveValues(valuesToMove, toRight, toBottom, toSheet)
 
-    let version: number
+    let version = 0
     this.stats.measure(StatType.TRANSFORM_ASTS, () => {
       const transformation = new MoveCellsTransformer(sourceRange, toRight, toBottom, toSheet)
       transformation.performEagerTransformations(this.dependencyGraph, this.parser)
@@ -323,7 +369,7 @@ export class Operations {
     const addedGlobalNamedExpressions = this.updateNamedExpressionsForMovedCells(sourceLeftCorner, width, height, destinationLeftCorner)
 
     return {
-      version: version!,
+      version: version,
       overwrittenCellsData: currentDataAtTarget,
       addedGlobalNamedExpressions: addedGlobalNamedExpressions
     }
@@ -334,12 +380,12 @@ export class Operations {
     let oldContent: [SimpleCellAddress, ClipboardCell][] = []
     for (const [source, target] of rowMapping) {
       if (source !== target) {
-        const rowRange = AbsoluteCellRange.spanFrom({sheet: sheetId, col: 0, row: source}, Infinity, 1)
+        const rowRange = AbsoluteCellRange.spanFrom({ sheet: sheetId, col: 0, row: source }, Infinity, 1)
         const row = this.getRangeClipboardCells(rowRange)
         oldContent = oldContent.concat(row)
         buffer.push(
           row.map(
-            ([{sheet, col}, cell]) => [{sheet, col, row: target}, cell]
+            ([{ sheet, col }, cell]) => [{ sheet, col, row: target }, cell]
           )
         )
       }
@@ -355,12 +401,12 @@ export class Operations {
     let oldContent: [SimpleCellAddress, ClipboardCell][] = []
     for (const [source, target] of columnMapping) {
       if (source !== target) {
-        const rowRange = AbsoluteCellRange.spanFrom({sheet: sheetId, col: source, row: 0}, 1, Infinity)
+        const rowRange = AbsoluteCellRange.spanFrom({ sheet: sheetId, col: source, row: 0 }, 1, Infinity)
         const column = this.getRangeClipboardCells(rowRange)
         oldContent = oldContent.concat(column)
         buffer.push(
           column.map(
-            ([{sheet, col: _col, row}, cell]) => [{sheet, col: target, row}, cell]
+            ([{ sheet, col: _col, row }, cell]) => [{ sheet, col: target, row }, cell]
           )
         )
       }
@@ -419,9 +465,9 @@ export class Operations {
 
   public ensureItIsPossibleToMoveCells(sourceLeftCorner: SimpleCellAddress, width: number, height: number, destinationLeftCorner: SimpleCellAddress): void {
     if (
-      invalidSimpleCellAddress(sourceLeftCorner) ||
+      isColOrRowInvalid(sourceLeftCorner) ||
       !((isPositiveInteger(width) && isPositiveInteger(height)) || isRowOrColumnRange(sourceLeftCorner, width, height)) ||
-      invalidSimpleCellAddress(destinationLeftCorner) ||
+      isColOrRowInvalid(destinationLeftCorner) ||
       !this.sheetMapping.hasSheetWithId(sourceLeftCorner.sheet) ||
       !this.sheetMapping.hasSheetWithId(destinationLeftCorner.sheet)
     ) {
@@ -449,14 +495,18 @@ export class Operations {
     for (const [address, clipboardCell] of cells) {
       this.restoreCell(address, clipboardCell)
       if (clipboardCell.type === ClipboardCellType.FORMULA) {
-        const {dependencies} = this.parser.fetchCachedResult(clipboardCell.hash)
+        const { dependencies } = this.parser.fetchCachedResult(clipboardCell.hash)
         addedNamedExpressions.push(...this.updateNamedExpressionsForTargetAddress(sourceSheetId, address, dependencies))
       }
     }
     return addedNamedExpressions
   }
 
-  public restoreCell(address: SimpleCellAddress, clipboardCell: ClipboardCell) {
+
+  /**
+   * Restores a single cell.
+   */
+  public restoreCell(address: SimpleCellAddress, clipboardCell: ClipboardCell): void {
     switch (clipboardCell.type) {
       case ClipboardCellType.VALUE: {
         this.setValueToCell(clipboardCell, address)
@@ -481,16 +531,16 @@ export class Operations {
     const vertex = this.dependencyGraph.getCell(address)
 
     if (vertex === undefined || vertex instanceof EmptyCellVertex) {
-      return [address, {type: ClipboardCellType.EMPTY}]
+      return [address, { type: ClipboardCellType.EMPTY }]
     } else if (vertex instanceof ValueCellVertex) {
-      return [address, {type: ClipboardCellType.VALUE, ...vertex.getValues()}]
+      return [address, { type: ClipboardCellType.VALUE, ...vertex.getValues() }]
     } else if (vertex instanceof FormulaVertex) {
       return [vertex.getAddress(this.lazilyTransformingAstService), {
         type: ClipboardCellType.FORMULA,
         hash: this.parser.computeHashFromAst(vertex.getFormula(this.lazilyTransformingAstService))
       }]
     } else if (vertex instanceof ParsingErrorVertex) {
-      return [address, {type: ClipboardCellType.PARSING_ERROR, rawInput: vertex.rawInput, errors: vertex.errors}]
+      return [address, { type: ClipboardCellType.PARSING_ERROR, rawInput: vertex.rawInput, errors: vertex.errors }]
     }
 
     throw Error('Trying to copy unsupported type')
@@ -500,22 +550,22 @@ export class Operations {
     const vertex = this.dependencyGraph.getCell(address)
 
     if (vertex === undefined || vertex instanceof EmptyCellVertex) {
-      return {type: ClipboardCellType.EMPTY}
+      return { type: ClipboardCellType.EMPTY }
     } else if (vertex instanceof ValueCellVertex) {
-      return {type: ClipboardCellType.VALUE, ...vertex.getValues()}
-    } else if (vertex instanceof ArrayVertex) {
+      return { type: ClipboardCellType.VALUE, ...vertex.getValues() }
+    } else if (vertex instanceof ArrayFormulaVertex) {
       const val = vertex.getArrayCellValue(address)
       if (val === EmptyValue) {
-        return {type: ClipboardCellType.EMPTY}
+        return { type: ClipboardCellType.EMPTY }
       }
-      return {type: ClipboardCellType.VALUE, parsedValue: val, rawValue: vertex.getArrayCellRawValue(address)}
-    } else if (vertex instanceof FormulaCellVertex) {
+      return { type: ClipboardCellType.VALUE, parsedValue: val, rawValue: vertex.getArrayCellRawValue(address) }
+    } else if (vertex instanceof ScalarFormulaVertex) {
       return {
         type: ClipboardCellType.FORMULA,
         hash: this.parser.computeHashFromAst(vertex.getFormula(this.lazilyTransformingAstService))
       }
     } else if (vertex instanceof ParsingErrorVertex) {
-      return {type: ClipboardCellType.PARSING_ERROR, rawInput: vertex.rawInput, errors: vertex.errors}
+      return { type: ClipboardCellType.PARSING_ERROR, rawInput: vertex.rawInput, errors: vertex.errors }
     }
 
     throw Error('Trying to copy unsupported type')
@@ -525,9 +575,9 @@ export class Operations {
     const sheetHeight = this.dependencyGraph.getSheetHeight(sheet)
     const sheetWidth = this.dependencyGraph.getSheetWidth(sheet)
 
-    const arr: ClipboardCell[][] = new Array(sheetHeight)
+    const arr: ClipboardCell[][] = new Array<ClipboardCell[]>(sheetHeight)
     for (let i = 0; i < sheetHeight; i++) {
-      arr[i] = new Array(sheetWidth)
+      arr[i] = new Array<ClipboardCell>(sheetWidth)
 
       for (let j = 0; j < sheetWidth; j++) {
         const address = simpleCellAddress(sheet, j, i)
@@ -551,17 +601,31 @@ export class Operations {
 
     if (parsedCellContent instanceof CellContent.Formula) {
       const parserResult = this.parser.parse(parsedCellContent.formula, address)
-      const {ast, errors} = parserResult
+      const { ast, errors } = parserResult
       if (errors.length > 0) {
         this.setParsingErrorToCell(parsedCellContent.formula, errors, address)
       } else {
-        const size = this.arraySizePredictor.checkArraySize(ast, address)
-        this.setFormulaToCell(address, size, parserResult)
+        try {
+          const size = this.arraySizePredictor.checkArraySize(ast, address)
+
+          if (size.width <= 0 || size.height <= 0) {
+            throw Error('Incorrect array size')
+          }
+
+          this.setFormulaToCell(address, size, parserResult)
+        } catch (error) {
+          if (!(error as Error).message) {
+            throw error
+          }
+
+          const parsingError: ParsingError = { type: ParsingErrorType.InvalidRangeSize, message: 'Invalid range size.' }
+          this.setParsingErrorToCell(parsedCellContent.formula, [parsingError], address)
+        }
       }
     } else if (parsedCellContent instanceof CellContent.Empty) {
       this.setCellEmpty(address)
     } else {
-      this.setValueToCell({parsedValue: parsedCellContent.value, rawValue: newCellContent}, address)
+      this.setValueToCell({ parsedValue: parsedCellContent.value, rawValue: newCellContent }, address)
     }
 
     return oldContent
@@ -577,45 +641,66 @@ export class Operations {
     }
   }
 
+  /**
+   * Sets cell content to an instance of parsing error.
+   * Creates a ParsingErrorVertex and updates the dependency graph and column search index.
+   */
   public setParsingErrorToCell(rawInput: string, errors: ParsingError[], address: SimpleCellAddress) {
-    const oldValue = this.dependencyGraph.getCellValue(address)
+    this.removeCellValueFromColumnSearch(address)
+
     const vertex = new ParsingErrorVertex(errors, rawInput)
     const arrayChanges = this.dependencyGraph.setParsingErrorToCell(address, vertex)
-    this.columnSearch.remove(getRawValue(oldValue), address)
+
     this.columnSearch.applyChanges(arrayChanges.getChanges())
     this.changes.addAll(arrayChanges)
     this.changes.addChange(vertex.getCellValue(), address)
   }
 
+  /**
+   * Sets cell content to a formula.
+   * Creates a ScalarFormulaVertex and updates the dependency graph and column search index.
+   */
   public setFormulaToCell(address: SimpleCellAddress, size: ArraySize, {
     ast,
     hasVolatileFunction,
     hasStructuralChangeFunction,
     dependencies
   }: ParsingResult) {
-    const oldValue = this.dependencyGraph.getCellValue(address)
+    this.removeCellValueFromColumnSearch(address)
+
     const arrayChanges = this.dependencyGraph.setFormulaToCell(address, ast, absolutizeDependencies(dependencies, address), size, hasVolatileFunction, hasStructuralChangeFunction)
-    this.columnSearch.remove(getRawValue(oldValue), address)
+
     this.columnSearch.applyChanges(arrayChanges.getChanges())
     this.changes.addAll(arrayChanges)
   }
 
+  /**
+   * Sets cell content to a value.
+   * Creates a ValueCellVertex and updates the dependency graph and column search index.
+   */
   public setValueToCell(value: RawAndParsedValue, address: SimpleCellAddress) {
-    const oldValue = this.dependencyGraph.getCellValue(address)
+    this.changeCellValueInColumnSearch(address, value.parsedValue)
+
     const arrayChanges = this.dependencyGraph.setValueToCell(address, value)
-    this.columnSearch.change(getRawValue(oldValue), getRawValue(value.parsedValue), address)
+
     this.columnSearch.applyChanges(arrayChanges.getChanges().filter(change => !equalSimpleCellAddress(change.address, address)))
     this.changes.addAll(arrayChanges)
     this.changes.addChange(value.parsedValue, address)
   }
 
+  /**
+   * Sets cell content to an empty value.
+   * Creates an EmptyCellVertex and updates the dependency graph and column search index.
+   */
   public setCellEmpty(address: SimpleCellAddress) {
     if (this.dependencyGraph.isArrayInternalCell(address)) {
       return
     }
-    const oldValue = this.dependencyGraph.getCellValue(address)
+
+    this.removeCellValueFromColumnSearch(address)
+
     const arrayChanges = this.dependencyGraph.setCellEmpty(address)
-    this.columnSearch.remove(getRawValue(oldValue), address)
+
     this.columnSearch.applyChanges(arrayChanges.getChanges())
     this.changes.addAll(arrayChanges)
     this.changes.addChange(EmptyValue, address)
@@ -638,12 +723,11 @@ export class Operations {
 
   /**
    * Returns true if row number is outside of given sheet.
-   *
-   * @param row - row number
-   * @param sheet - sheet id number
+   * @param {number} row - row number
+   * @param {number} sheet - sheet ID number
    */
   public rowEffectivelyNotInSheet(row: number, sheet: number): boolean {
-    const height = this.dependencyGraph.addressMapping.getHeight(sheet)
+    const height = this.dependencyGraph.addressMapping.getSheetHeight(sheet)
     return row >= height
   }
 
@@ -660,10 +744,7 @@ export class Operations {
   /**
    * Removes multiple rows from sheet. </br>
    * Does nothing if rows are outside of effective sheet size.
-   *
-   * @param sheet - sheet id from which rows will be removed
-   * @param rowStart - number of the first row to be deleted
-   * @param rowEnd - number of the last row to be deleted
+   * @param {RowsSpan} rowsToRemove - rows to remove
    */
   private doRemoveRows(rowsToRemove: RowsSpan): RowsRemoval | undefined {
     if (this.rowEffectivelyNotInSheet(rowsToRemove.rowStart, rowsToRemove.sheet)) {
@@ -672,14 +753,14 @@ export class Operations {
 
     const removedCells: ChangedCell[] = []
     for (const [address] of this.dependencyGraph.entriesFromRowsSpan(rowsToRemove)) {
-      removedCells.push({address, cellType: this.getClipboardCell(address)})
+      removedCells.push({ address, cellType: this.getClipboardCell(address) })
     }
 
-    const {affectedArrays, contentChanges} = this.dependencyGraph.removeRows(rowsToRemove)
+    const { affectedArrays, contentChanges } = this.dependencyGraph.removeRows(rowsToRemove)
 
     this.columnSearch.applyChanges(contentChanges.getChanges())
 
-    let version: number
+    let version = 0
     this.stats.measure(StatType.TRANSFORM_ASTS, () => {
       const transformation = new RemoveRowsTransformer(rowsToRemove)
       transformation.performEagerTransformations(this.dependencyGraph, this.parser)
@@ -688,16 +769,13 @@ export class Operations {
 
     this.rewriteAffectedArrays(affectedArrays)
 
-    return {version: version!, removedCells, rowFrom: rowsToRemove.rowStart, rowCount: rowsToRemove.numberOfRows}
+    return { version: version, removedCells, rowFrom: rowsToRemove.rowStart, rowCount: rowsToRemove.numberOfRows }
   }
 
   /**
    * Removes multiple columns from sheet. </br>
    * Does nothing if columns are outside of effective sheet size.
-   *
-   * @param sheet - sheet id from which columns will be removed
-   * @param columnStart - number of the first column to be deleted
-   * @param columnEnd - number of the last row to be deleted
+   * @param {ColumnsSpan} columnsToRemove - columns to remove
    */
   private doRemoveColumns(columnsToRemove: ColumnsSpan): ColumnsRemoval | undefined {
     if (this.columnEffectivelyNotInSheet(columnsToRemove.columnStart, columnsToRemove.sheet)) {
@@ -706,14 +784,14 @@ export class Operations {
 
     const removedCells: ChangedCell[] = []
     for (const [address] of this.dependencyGraph.entriesFromColumnsSpan(columnsToRemove)) {
-      removedCells.push({address, cellType: this.getClipboardCell(address)})
+      removedCells.push({ address, cellType: this.getClipboardCell(address) })
     }
 
-    const {affectedArrays, contentChanges} = this.dependencyGraph.removeColumns(columnsToRemove)
+    const { affectedArrays, contentChanges } = this.dependencyGraph.removeColumns(columnsToRemove)
     this.columnSearch.applyChanges(contentChanges.getChanges())
     this.columnSearch.removeColumns(columnsToRemove)
 
-    let version: number
+    let version = 0
     this.stats.measure(StatType.TRANSFORM_ASTS, () => {
       const transformation = new RemoveColumnsTransformer(columnsToRemove)
       transformation.performEagerTransformations(this.dependencyGraph, this.parser)
@@ -723,7 +801,7 @@ export class Operations {
     this.rewriteAffectedArrays(affectedArrays)
 
     return {
-      version: version!,
+      version: version,
       removedCells,
       columnFrom: columnsToRemove.columnStart,
       columnCount: columnsToRemove.numberOfColumns
@@ -733,17 +811,14 @@ export class Operations {
   /**
    * Add multiple rows to sheet. </br>
    * Does nothing if rows are outside of effective sheet size.
-   *
-   * @param sheet - sheet id in which rows will be added
-   * @param row - row number above which the rows will be added
-   * @param numberOfRowsToAdd - number of rows to add
+   * @param {RowsSpan} addedRows - rows to add
    */
   private doAddRows(addedRows: RowsSpan) {
     if (this.rowEffectivelyNotInSheet(addedRows.rowStart, addedRows.sheet)) {
       return
     }
 
-    const {affectedArrays} = this.dependencyGraph.addRows(addedRows)
+    const { affectedArrays } = this.dependencyGraph.addRows(addedRows)
 
     this.stats.measure(StatType.TRANSFORM_ASTS, () => {
       const transformation = new AddRowsTransformer(addedRows)
@@ -754,7 +829,7 @@ export class Operations {
     this.rewriteAffectedArrays(affectedArrays)
   }
 
-  private rewriteAffectedArrays(affectedArrays: Set<ArrayVertex>) {
+  private rewriteAffectedArrays(affectedArrays: Set<ArrayFormulaVertex>) {
     for (const arrayVertex of affectedArrays.values()) {
       if (arrayVertex.array.size.isRef) {
         continue
@@ -769,17 +844,14 @@ export class Operations {
   /**
    * Add multiple columns to sheet </br>
    * Does nothing if columns are outside of effective sheet size
-   *
-   * @param sheet - sheet id in which columns will be added
-   * @param column - column number above which the columns will be added
-   * @param numberOfColumns - number of columns to add
+   * @param {ColumnsSpan} addedColumns - object containing information about columns to add
    */
   private doAddColumns(addedColumns: ColumnsSpan): void {
     if (this.columnEffectivelyNotInSheet(addedColumns.columnStart, addedColumns.sheet)) {
       return
     }
 
-    const {affectedArrays, contentChanges} = this.dependencyGraph.addColumns(addedColumns)
+    const { affectedArrays, contentChanges } = this.dependencyGraph.addColumns(addedColumns)
     this.columnSearch.addColumns(addedColumns)
     this.columnSearch.applyChanges(contentChanges.getChanges())
 
@@ -794,12 +866,11 @@ export class Operations {
 
   /**
    * Returns true if row number is outside of given sheet.
-   *
-   * @param column - row number
-   * @param sheet - sheet id number
+   * @param {number} column - row number
+   * @param {number} sheet - sheet ID number
    */
   private columnEffectivelyNotInSheet(column: number, sheet: number): boolean {
-    const width = this.dependencyGraph.addressMapping.getWidth(sheet)
+    const width = this.dependencyGraph.addressMapping.getSheetWidth(sheet)
     return column >= width
   }
 
@@ -808,21 +879,21 @@ export class Operations {
       return
     }
     const { vertex: localVertex, id: maybeLocalVertexId } = this.dependencyGraph.fetchCellOrCreateEmpty(namedExpression.address)
-    const localVertexId = maybeLocalVertexId ?? this.dependencyGraph.graph.getNodeId(localVertex)!
+    const localVertexId = maybeLocalVertexId ?? this.dependencyGraph.graph.getNodeId(localVertex)
 
     const globalNamedExpression = this.namedExpressions.workbookNamedExpressionOrPlaceholder(expressionName)
     const { vertex: globalVertex, id: maybeGlobalVertexId } = this.dependencyGraph.fetchCellOrCreateEmpty(globalNamedExpression.address)
-    const globalVertexId = maybeGlobalVertexId ?? this.dependencyGraph.graph.getNodeId(globalVertex)!
+    const globalVertexId = maybeGlobalVertexId ?? this.dependencyGraph.graph.getNodeId(globalVertex)
 
     for (const adjacentNode of this.dependencyGraph.graph.adjacentNodes(globalVertex)) {
-      if (adjacentNode instanceof FormulaCellVertex && adjacentNode.getAddress(this.lazilyTransformingAstService).sheet === sheetId) {
+      if (adjacentNode instanceof ScalarFormulaVertex && adjacentNode.getAddress(this.lazilyTransformingAstService).sheet === sheetId) {
         const ast = adjacentNode.getFormula(this.lazilyTransformingAstService)
         const formulaAddress = adjacentNode.getAddress(this.lazilyTransformingAstService)
-        const {dependencies} = this.parser.fetchCachedResultForAst(ast)
+        const { dependencies } = this.parser.fetchCachedResultForAst(ast)
         for (const dependency of absolutizeDependencies(dependencies, formulaAddress)) {
           if (dependency instanceof NamedExpressionDependency && dependency.name.toLowerCase() === namedExpression.displayName.toLowerCase()) {
-            this.dependencyGraph.graph.removeEdge(globalVertexId, adjacentNode)
-            this.dependencyGraph.graph.addEdge(localVertexId, adjacentNode)
+            this.dependencyGraph.graph.removeEdgeIfExists(globalVertexId as number, adjacentNode)
+            this.dependencyGraph.graph.addEdge(localVertexId as number, adjacentNode)
           }
         }
       }
@@ -836,12 +907,12 @@ export class Operations {
       if (doesContainRelativeReferences(parsingResult.ast)) {
         throw new NoRelativeAddressesAllowedError()
       }
-      const {ast, hasVolatileFunction, hasStructuralChangeFunction, dependencies} = parsingResult
+      const { ast, hasVolatileFunction, hasStructuralChangeFunction, dependencies } = parsingResult
       this.dependencyGraph.setFormulaToCell(address, ast, absolutizeDependencies(dependencies, address), ArraySize.scalar(), hasVolatileFunction, hasStructuralChangeFunction)
     } else if (parsedCellContent instanceof CellContent.Empty) {
       this.setCellEmpty(address)
     } else {
-      this.setValueToCell({parsedValue: parsedCellContent.value, rawValue: expression}, address)
+      this.setValueToCell({ parsedValue: parsedCellContent.value, rawValue: expression }, address)
     }
   }
 
@@ -854,10 +925,10 @@ export class Operations {
     const targetRange = AbsoluteCellRange.spanFrom(destinationLeftCorner, width, height)
 
     for (const formulaAddress of targetRange.addresses(this.dependencyGraph)) {
-      const vertex = this.addressMapping.fetchCell(formulaAddress)
-      if (vertex instanceof FormulaCellVertex && formulaAddress.sheet !== sourceLeftCorner.sheet) {
+      const vertex = this.addressMapping.getCell(formulaAddress, { throwIfCellNotExists: true })
+      if (vertex instanceof ScalarFormulaVertex && formulaAddress.sheet !== sourceLeftCorner.sheet) {
         const ast = vertex.getFormula(this.lazilyTransformingAstService)
-        const {dependencies} = this.parser.fetchCachedResultForAst(ast)
+        const { dependencies } = this.parser.fetchCachedResultForAst(ast)
         addedGlobalNamedExpressions.push(...this.updateNamedExpressionsForTargetAddress(sourceLeftCorner.sheet, formulaAddress, dependencies))
       }
     }
@@ -871,7 +942,7 @@ export class Operations {
     }
 
     const addedGlobalNamedExpressions: string[] = []
-    const vertex = this.addressMapping.fetchCell(targetAddress)
+    const vertex = this.addressMapping.getCellOrThrow(targetAddress)
 
     for (const namedExpressionDependency of absolutizeDependencies(dependencies, targetAddress)) {
       if (!(namedExpressionDependency instanceof NamedExpressionDependency)) {
@@ -896,7 +967,7 @@ export class Operations {
   }
 
   private allocateNamedExpressionAddressSpace() {
-    this.dependencyGraph.addressMapping.addSheet(NamedExpressions.SHEET_FOR_WORKBOOK_EXPRESSIONS, new SparseStrategy(0, 0))
+    this.dependencyGraph.addressMapping.addSheetWithStrategy(NamedExpressions.SHEET_FOR_WORKBOOK_EXPRESSIONS, new SparseStrategy(0, 0))
   }
 
   private copyOrFetchGlobalNamedExpressionVertex(expressionName: string, sourceVertex: CellVertex, addedNamedExpressions: string[]): CellVertex {
@@ -904,9 +975,9 @@ export class Operations {
     if (expression === undefined) {
       expression = this.namedExpressions.addNamedExpression(expressionName)
       addedNamedExpressions.push(expression.normalizeExpressionName())
-      if (sourceVertex instanceof FormulaCellVertex) {
+      if (sourceVertex instanceof ScalarFormulaVertex) {
         const parsingResult = this.parser.fetchCachedResultForAst(sourceVertex.getFormula(this.lazilyTransformingAstService))
-        const {ast, hasVolatileFunction, hasStructuralChangeFunction, dependencies} = parsingResult
+        const { ast, hasVolatileFunction, hasStructuralChangeFunction, dependencies } = parsingResult
         this.dependencyGraph.setFormulaToCell(expression.address, ast, absolutizeDependencies(dependencies, expression.address), ArraySize.scalar(), hasVolatileFunction, hasStructuralChangeFunction)
       } else if (sourceVertex instanceof EmptyCellVertex) {
         this.setCellEmpty(expression.address)
@@ -915,6 +986,45 @@ export class Operations {
       }
     }
     return this.dependencyGraph.fetchCellOrCreateEmpty(expression.address).vertex
+  }
+
+  /**
+   * Removes a cell value from the columnSearch index.
+   * Ignores the non-computed formula vertices.
+   */
+  private removeCellValueFromColumnSearch(address: SimpleCellAddress): void {
+    if (this.isNotComputed(address)) {
+      return
+    }
+
+    const oldValue = this.dependencyGraph.getCellValue(address)
+    this.columnSearch.remove(getRawValue(oldValue), address)
+  }
+
+  /**
+   * Changes a cell value in the columnSearch index.
+   * Ignores the non-computed formula vertices.
+   */
+  private changeCellValueInColumnSearch(address: SimpleCellAddress, newValue: ValueCellVertexValue): void {
+    if (this.isNotComputed(address)) {
+      return
+    }
+
+    const oldValue = this.dependencyGraph.getCellValue(address)
+    this.columnSearch.change(getRawValue(oldValue), getRawValue(newValue), address)
+  }
+
+  /**
+   * Checks if the ScalarFormulaVertex or ArrayFormulaVertex at the given address is not computed.
+   */
+  private isNotComputed(address: SimpleCellAddress): boolean {
+    const vertex = this.dependencyGraph.getCell(address)
+
+    if (!vertex) {
+      return false
+    }
+
+    return 'isComputed' in vertex && !vertex.isComputed()
   }
 }
 
@@ -977,8 +1087,8 @@ export function normalizeAddedIndexes(indexes: ColumnRowIndex[]): ColumnRowIndex
   return merged
 }
 
-function isPositiveInteger(x: number): boolean {
-  return Number.isInteger(x) && x > 0
+function isPositiveInteger(n: number): boolean {
+  return Number.isInteger(n) && n > 0
 }
 
 function isRowOrColumnRange(leftCorner: SimpleCellAddress, width: number, height: number): boolean {

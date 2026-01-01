@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2023 Handsoncode. All rights reserved.
+ * Copyright (c) 2025 Handsoncode. All rights reserved.
  */
 
 import {AbsoluteCellRange} from '../../AbsoluteCellRange'
@@ -609,13 +609,13 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
   /**
    * Performs range operation on given range
    *
-   * @param ast - cell range ast
-   * @param state
-   * @param initialAccValue - initial accumulator value for reducing function
-   * @param functionName - function name to use as cache key
-   * @param reducingFunction - reducing function
-   * @param mapFunction
-   * @param coercionFunction
+   * @param {CellRangeAst | ColumnRangeAst | RowRangeAst} ast - cell range ast
+   * @param {InterpreterState} state - interpreter state
+   * @param {T} initialAccValue - initial accumulator value for reducing function
+   * @param {string} functionName - function name to use as cache key
+   * @param {BinaryOperation<T>} reducingFunction - reducing function
+   * @param {MapOperation<T>} mapFunction - mapper transforming coerced scalar
+   * @param {coercionOperation} coercionFunction - scalar-to-number coercer
    */
   private evaluateRange<T>(ast: CellRangeAst | ColumnRangeAst | RowRangeAst, state: InterpreterState, initialAccValue: T, functionName: string, reducingFunction: BinaryOperation<T>, mapFunction: MapOperation<T>, coercionFunction: coercionOperation): T | CellError {
     let range
@@ -627,6 +627,10 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
       } else {
         throw err
       }
+    }
+
+    if (!this.isSheetValid(range)) {
+      return new CellError(ErrorType.REF, ErrorMessage.SheetRef)
     }
 
     const rangeVertex = this.dependencyGraph.getRange(range.start, range.end)
@@ -654,12 +658,22 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
   }
 
   /**
+   * Checks whether both ends of a range point to existing sheets (placeholders excluded).
+   */
+  private isSheetValid(range: AbsoluteCellRange): boolean {
+    return (
+      this.dependencyGraph.sheetMapping.hasSheetWithId(range.start.sheet, {includePlaceholders: false}) &&
+      this.dependencyGraph.sheetMapping.hasSheetWithId(range.end.sheet, {includePlaceholders: false})
+    )
+  }
+
+  /**
    * Returns list of values for given range and function name
    *
    * If range is dependent on smaller range, list will contain value of smaller range for this function
    * and values of cells that are not present in smaller range
    *
-   * @param functionName - function name (e.g. SUM)
+   * @param functionName - function name (e.g., SUM)
    * @param range - cell range
    * @param rangeVertex
    * @param mapFunction
@@ -687,6 +701,7 @@ export class NumericAggregationPlugin extends FunctionPlugin implements Function
     } else {
       actualRange = range
     }
+
     for (const cellFromRange of actualRange.addresses(this.dependencyGraph)) {
       const val = coercionFunction(this.dependencyGraph.getScalarValue(cellFromRange))
       if (val instanceof CellError) {

@@ -7,6 +7,78 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [3.1.1] - 2025-12-18
+
+### Fixed
+
+- Fixed an issue where cells were not recalculated after adding, removing and renaming sheets. [#1116](https://github.com/handsontable/hyperformula/issues/1116)
+- Fixed an issue where overwriting a non-computed cell caused the `Value of the formula cell is not computed` error. [#1194](https://github.com/handsontable/hyperformula/issues/1194)
+
+## [3.1.0] - 2025-10-14
+
+### Changed
+
+- Renamed the `arraySizeMethod` parameter in the `FunctionMetadata` interface to `sizeOfResultArrayMethod`. The `arraySizeMethod` is deprecated and will be removed in one of the next major releases. [#1401](https://github.com/handsontable/hyperformula/issues/1401)
+- Renamed the `arrayFunction` parameter in the `FunctionMetadata` interface to `enableArrayArithmeticForArguments`. The `arrayFunction` is deprecated and will be removed in one of the next major releases. [#1401](https://github.com/handsontable/hyperformula/issues/1401)
+
+### Fixed
+
+- Fixed an issue where the `OFFSET` function was ignoring the sheet reference in the provided address. [#1477](https://github.com/handsontable/hyperformula/issues/1477)
+
+## [3.0.1] - 2025-08-11
+
+### Fixed
+
+- Fixed `Edge does not exist` error when a named expression is used twice in the same formula. [#1102](https://github.com/handsontable/hyperformula/issues/1102)
+- Fixed typos in the built-in functions guide. [#1517](https://github.com/handsontable/hyperformula/issues/1517)
+- Fixed an issue where named expressions added on engine initialization were not updated on changes. [#1501](https://github.com/handsontable/hyperformula/issues/1501)
+
+## [3.0.0] - 2025-01-14
+
+### Added
+
+- Added a new function: XLOOKUP. [#1458](https://github.com/handsontable/hyperformula/issues/1458)
+
+### Changed
+
+- **Breaking change**: Changed ES module build to use `mjs` files and `exports` property in `package.json` to make importing language files possible in Node environment. [#1344](https://github.com/handsontable/hyperformula/issues/1344)
+- **Breaking change**: Changed the default value of the `precisionRounding` configuration option to `10`. [#1300](https://github.com/handsontable/hyperformula/issues/1300)
+- Make methods `simpleCellAddressToString` and `simpleCellRangeToString` more logical and easier to use. [#1151](https://github.com/handsontable/hyperformula/issues/1151)
+
+### Removed
+
+- **Breaking change**: Removed the `binarySearchThreshold` configuration option. [#1439](https://github.com/handsontable/hyperformula/issues/1439)
+
+## [2.7.1] - 2024-07-18
+
+### Fixed
+
+- Fixed an issue where adding or removing columns with `DenseStrategy` for address mapping resulted in the `Cannot read properties of undefined (reading 'splice')` error. [#1406](https://github.com/handsontable/hyperformula/issues/1406)
+
+## [2.7.0] - 2024-04-10
+
+### Added
+
+- Added method `getNamedExpressionsFromFormula` to extract named expressions from formulas. [#1365](https://github.com/handsontable/hyperformula/issues/1365)
+- Added `context` config option for passing data to custom functions. [#1396](https://github.com/handsontable/hyperformula/issues/1396)
+
+## [2.6.2] - 2024-02-15
+
+### Changed
+
+- Removed `unorm` dependency. [#1370](https://github.com/handsontable/hyperformula/issues/1370)
+
+## [2.6.1] - 2023-12-27
+
+### Fixed
+
+- Fixed an issue where operating on ranges of incompatible sizes resulted in a runtime exception. [#1267](https://github.com/handsontable/hyperformula/issues/1267)
+- Fixed an issue where the `simpleCellAddressFromString()` method was crashing when called with a non-ASCII character in an unquoted sheet name. [#1312](https://github.com/handsontable/hyperformula/issues/1312)
+- Fixed an issue where adding a row to a very large spreadsheet resulted in the `Maximum call stack size exceeded` error. [#1332](https://github.com/handsontable/hyperformula/issues/1332)
+- Fixed an issue where using a column-range reference to an empty sheet as a function argument resulted in the `Incorrect array size` error. [#1147](https://github.com/handsontable/hyperformula/issues/1147)
+- Fixed an issue where the SUBSTITUTE function wasn't working correctly with regex special characters. [#1289](https://github.com/handsontable/hyperformula/issues/1289)
+- Fixed a typo in the JSDoc comment of the `HyperFormula` class. [#1323](https://github.com/handsontable/hyperformula/issues/1323)
+
 ## [2.6.0] - 2023-09-19
 
 ### Added
@@ -277,7 +349,7 @@ For more information on this release, see:
 - **Breaking change**: Changed config options [#747](https://github.com/handsontable/hyperformula/issues/747):
 
 | before                | after                |
-| --------------------- | -------------------- |
+|-----------------------|----------------------|
 | matrixColumnSeparator | arrayColumnSeparator |
 | matrixRowSeparator    | arrayRowSeparator    |
 
@@ -286,14 +358,14 @@ For more information on this release, see:
 - **Breaking change**: Changed API methods [#747](https://github.com/handsontable/hyperformula/issues/747):
 
 | before             | after             |
-| ------------------ | ----------------- |
+|--------------------|-------------------|
 | matrixMapping      | arrrayMapping     |
 | isCellPartOfMatrix | isCellPartOfArray |
 
 - **Breaking change**: Changed Exceptions [#747](https://github.com/handsontable/hyperformula/issues/747):
 
 | before                       | after                       |
-| ---------------------------- | --------------------------- |
+|------------------------------|-----------------------------|
 | SourceLocationHasMatrixError | SourceLocationHasArrayError |
 | TargetLocationHasMatrixError | TargetLocationHasArrayError |
 
